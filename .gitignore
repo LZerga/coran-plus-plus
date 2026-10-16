@@ -8,3 +8,6 @@ sorties/
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# Brouillon du document de recherche : gardé sur le poste, pas publié avant réécriture.
+docs/document_de_recherche.pdf

@@ -4,7 +4,7 @@
 
 A descriptive toolkit for studying how the word forms of a Quranic root associate with
 other forms, letters and pronouns within verse segments. The method comes from the
-author's research notes (`docs/document_de_recherche.pdf`).
+author's research notes (not published yet).
 
 Author: Lotfi Zerga.
 
