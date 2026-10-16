@@ -10,6 +10,7 @@
     python -m quran_harness identite <racine>  # niveau 0 : هوية الجذر
     python -m quran_harness paire <passage A> <passage B> --pivot <forme>   # niveau 1
     python -m quran_harness familles <forme> [--pause strict|souple|verset]  # niveaux 1 et 2
+    python -m quran_harness comparer <forme 1> <forme 2> [--pause] [--detail]  # niveau 5
     python -m quran_harness decoupages
     python -m quran_harness verset <sourate:verset>
     python -m quran_harness exemples
@@ -266,6 +267,35 @@ def _fiche_new(args: argparse.Namespace) -> int:
     return 0
 
 
+def _comparer(args: argparse.Namespace) -> int:
+    from . import comparison
+    from .families import forms_for
+    from .labels import t
+    from .segmentation import selected_scheme
+    from .units import FormSettings
+
+    connection, meta = _open_database()
+    config = with_pause(load_config(), args.pause)
+    chosen = []
+    for typed in (args.forme1, args.forme2):
+        candidates = forms_for(connection, typed, FormSettings.from_config(config))
+        if not candidates:
+            print(t("no_occurrence") + f" ({typed})")
+            return 1
+        form = next(iter(candidates))
+        if len(candidates) > 1:
+            others = "، ".join(f"{f} ({n})" for f, n in list(candidates.items())[1:])
+            print(t("retained", typed=typed, form=form, n=candidates[form], others=others))
+        chosen.append(form)
+    try:
+        found = comparison.compare_forms(connection, *chosen, selected_scheme(config), config)
+    except ValueError:
+        print(t("not_same_root"))
+        return 1
+    _write(comparison.render(found, meta, detail=args.detail), args.sortie)
+    return 0
+
+
 def _forme(args: argparse.Namespace) -> int:
     from .labels import meta_line, t
     from .units import FormSettings, by_form, occurrences_of_form
@@ -390,6 +420,14 @@ def main(argv: list[str] | None = None) -> int:
     p_fiche.add_argument("--detail", action="store_true", help="tout afficher : références, paires, colonnes masquées")
     p_fiche.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
     p_fiche.set_defaults(func=_fiche_new)
+
+    p_comparer = sub.add_parser("comparer", help="مقارنة صيغتين من نفس الجذر (المستوى 5)")
+    p_comparer.add_argument("forme1")
+    p_comparer.add_argument("forme2")
+    p_comparer.add_argument("--pause", choices=pauses, default=pause_default, help="découpage en segments")
+    p_comparer.add_argument("--detail", action="store_true", help="tout afficher")
+    p_comparer.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
+    p_comparer.set_defaults(func=_comparer)
 
     args = parser.parse_args(argv)
     return args.func(args)

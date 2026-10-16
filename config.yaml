@@ -40,6 +40,10 @@ families:               # niveau 2 : familles tracées par la typologie (SPEC §
 matrix:                 # niveau 3 : matrices d'alignement (SPEC §2.5)
   relative_min: 0.75    # colonne « relativement fixe » : même forme dans cette part des lignes   (D-09)
 
+comparison:             # niveau 5 : comparaison de deux formes de la même racine (SPEC §2.12)
+  formula_min_block: 3  # un segment est dans une formule s'il partage un bloc d'au moins 3 cases
+  support_min: 3        # covariation retenue si chaque forme la porte sur au moins 3 segments   (D-10)
+
 statistics:             # (Q10) ; contrôle aléatoire, refait sur les cases au lot E
   seed: 20261010
   permutations: 1000

@@ -15,7 +15,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 
-from .. import __version__, pairs, root_identity, sheet
+from .. import __version__, comparison, pairs, root_identity, sheet
 from ..config import default_pause, load_config, pause_choices, with_pause
 from ..families import forms_for
 from ..labels import t
@@ -93,6 +93,30 @@ def create_app(db_path: Path) -> FastAPI:
                 "candidates": [{"form": f, "occurrences": n} for f, n in candidates.items()],
                 "html": to_html(sheet.render(found, meta, config, detail=detail)),
             }
+        finally:
+            connection.close()
+
+    @app.get("/api/comparer")
+    def comparer(a: str, b: str, pause: str | None = None, detail: bool = False) -> dict:
+        """Two forms of the same root compared (level 5). Typed without vowels: the most frequent form of each."""
+        config = configured(pause)
+        connection, meta = connect()
+        try:
+            chosen, notes = [], []
+            for typed in (required(a), required(b)):
+                candidates = forms_for(connection, typed, FormSettings.from_config(config))
+                if not candidates:
+                    raise HTTPException(404, f"{t('no_occurrence')} ({typed})")
+                form = next(iter(candidates))
+                if len(candidates) > 1:
+                    others = "، ".join(f"{f} ({n})" for f, n in list(candidates.items())[1:])
+                    notes.append(t("retained", typed=typed, form=form, n=candidates[form], others=others))
+                chosen.append(form)
+            try:
+                found = comparison.compare_forms(connection, *chosen, selected_scheme(config), config)
+            except ValueError:
+                raise HTTPException(400, t("not_same_root")) from None
+            return {"forms": chosen, "notes": notes, "html": to_html(comparison.render(found, meta, detail=detail))}
         finally:
             connection.close()
 

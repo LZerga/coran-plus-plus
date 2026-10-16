@@ -46,6 +46,7 @@ CREATE TABLE units (
     text_raw     TEXT NOT NULL,          -- piece of words.text_raw, unchanged
     form         TEXT NOT NULL,          -- what "the same form" is compared on
     skeleton     TEXT NOT NULL,          -- letters only (normalisation level 2)
+    spelling     TEXT NOT NULL,          -- skeleton with the superscript alef written as an alef (typing aid)
     stem_vowel   TEXT NOT NULL,          -- marks removed before attached complement pronouns
     final_vowel  TEXT NOT NULL,          -- marks removed from the last letter
     base         TEXT NOT NULL,          -- the cell without attached letters and pronouns (codes E1, E2; Q22)
@@ -55,6 +56,7 @@ CREATE INDEX units_by_word ON units (word_id);
 CREATE INDEX units_by_aya ON units (sura, aya, pos);
 CREATE INDEX units_by_form ON units (form);
 CREATE INDEX units_by_skeleton ON units (skeleton);
+CREATE INDEX units_by_spelling ON units (spelling);
 
 -- One row per cell and per root it carries. A detached waw carries none.
 CREATE VIEW unit_roots AS
@@ -169,9 +171,10 @@ def build(db_path: Path = DB_PATH, config: dict | None = None) -> dict[str, int]
                 position[sura, aya] = position.get((sura, aya), 0) + 1
                 rows.append(
                     (len(rows) + 1, word_id, part, unit_ref, sura, aya, position[sura, aya], piece, form,
-                     normalize(piece, Level.NO_VOWELS), stem_vowel, final_vowel, base, json.dumps(attached, ensure_ascii=False))
+                     normalize(piece, Level.NO_VOWELS), spelling_of(piece), stem_vowel, final_vowel, base,
+                     json.dumps(attached, ensure_ascii=False))
                 )  # fmt: skip
-        connection.executemany("INSERT INTO units VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+        connection.executemany("INSERT INTO units VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
         broken = connection.execute(
             """SELECT count(*) FROM words w WHERE w.text_raw !=
                (SELECT group_concat(text_raw, '') FROM (SELECT text_raw FROM units WHERE word_id = w.id ORDER BY id))"""
@@ -232,8 +235,21 @@ def forms_of_root(connection: sqlite3.Connection, root: str) -> list[FormCount]:
     return [FormCount(*row) for row in rows]
 
 
+SUPERSCRIPT_ALEF = "ٰ"
+
+
+def spelling_of(text: str) -> str:
+    """The letters as one types them in common spelling: the superscript alef becomes an alef
+    (عَٰلِمُ → عالم). Only a typing aid: never used to compare forms."""
+    return search_key(text.replace(SUPERSCRIPT_ALEF, ALEF))
+
+
 def _comparable(form: str) -> str:
     return form.replace(ALEF_WASLA, ALEF)
+
+
+def _loose(form: str) -> str:
+    return _comparable(form).replace(SUPERSCRIPT_ALEF, ALEF)
 
 
 def occurrences_of_form(connection: sqlite3.Connection, typed: str, settings: FormSettings) -> list[Occurrence]:
@@ -242,18 +258,24 @@ def occurrences_of_form(connection: sqlite3.Connection, typed: str, settings: Fo
     Typed without vowels, the form may cover several vocalised forms: all are
     returned, for the caller to list side by side (no silent merge). Typed with
     vowels, only the cells with that very form are returned.
+
+    The Uthmani text often writes a long ā with a superscript alef (عَٰلِم) where common
+    spelling writes an alef (عالم). When the letters typed match nothing, they are
+    looked for once more with the superscript alef read as an alef.
     """
-    rows = connection.execute(
-        """SELECT u.id, u.ref, w.ref, u.form, u.text_raw,
-                  coalesce((SELECT group_concat(root, ' ') FROM unit_roots r WHERE r.unit_id = u.id), '')
-           FROM units u JOIN words w ON w.id = u.word_id
-           WHERE replace(u.skeleton, ?, ?) = ? AND u.aya > 0 ORDER BY u.id""",
-        (ALEF_WASLA, ALEF, search_key(typed)),
-    )
-    found = [Occurrence(*row) for row in rows]
+    query = """SELECT u.id, u.ref, w.ref, u.form, u.text_raw,
+                      coalesce((SELECT group_concat(root, ' ') FROM unit_roots r WHERE r.unit_id = u.id), '')
+               FROM units u JOIN words w ON w.id = u.word_id
+               WHERE {column} = ? AND u.aya > 0 ORDER BY u.id"""
+    found = [Occurrence(*row) for row in connection.execute(query.format(column="replace(u.skeleton, ?, ?)"),
+                                                            (ALEF_WASLA, ALEF, search_key(typed)))]  # fmt: skip
+    loose = not found
+    if loose:
+        found = [Occurrence(*row) for row in connection.execute(query.format(column="u.spelling"), (spelling_of(typed),))]
     if any(ch in VOWEL_MARKS for ch in typed):
-        wanted = _comparable(form_of(typed, None, settings)[0])
-        found = [o for o in found if _comparable(o.form) == wanted]
+        compare = _loose if loose else _comparable
+        wanted = compare(form_of(typed, None, settings)[0])
+        found = [o for o in found if compare(o.form) == wanted]
     return found
 
 

@@ -1001,3 +1001,51 @@ exemple : `docs/exemple_fiche_yaqdir.md`. L'ancienne fiche reste disponible sous
   (qui lisait les éléments au lemme) est retiré, à refaire sur les cases au lot E.
 - `config.yaml` : sections `reference_form`, `normalization`, `equivalence`, `relations`,
   `usage_groups`, `assistant` retirées.
+
+---
+
+## Niveau 5, première partie : مقارنة صيغتين (2026-10-16)
+
+Décisions de l'utilisateur : comparer **segment par segment** d'abord ; matrices par famille
+au niveau de la racine ensuite ; dimensions retenues pour la première version :
+1, 2, 4, 5, 7, 8, 9, 11, 12, 14, 20 (liste proposée le 2026-10-16) ; commencer par
+يقدر / قدير et عالم / علام.
+
+Réalisé : `src/quran_harness/comparison.py`, commande `comparer <forme 1> <forme 2>`,
+onglet web « مقارنة صيغتين », `tests/test_comparison.py` ; exemple :
+`docs/exemple_comparaison_yaqdir_qadir.md`.
+
+- Chaque segment de la forme 1 est comparé à chaque segment de la forme 2 (niveau 1, les
+  deux formes en pivots appariés par leur racine, code E3). Cas du document : (أ) même forme,
+  (ب) même racine et formes différentes, (ج) ni l'un ni l'autre. **Les حروف وضمائر sont
+  comptées à part** : sinon la واو mise à part serait commune à presque toutes les paires.
+- Dimensions, côte à côte ; familles mixtes (segments des deux formes) avec leur matrice ;
+  covariations (20).
+- Observations (statut ملاحظ, pas encore de contrôle aléatoire) :
+
+| Paire | Paires de segments | Cas (ب) | Résultat saillant |
+|---|---|---|---|
+| عَٰلِم / عَلَّٰم | 52 | 52 (100 %) | covariation : عَٰلِم → ٱلْغَيْب (12 sur 13), عَلَّٰم → ٱلْغُيُوب (4 sur 4) |
+| يَقْدِر / قَدِير | 444 | 339 (76 %) | يَشَاء ~ شَىْء dans 297 paires ; قَدِير finit le segment 36 fois sur 37 et l'آية 33 fois ; يَقْدِر ouvre l'آية dans 9 segments |
+
+### Q31 — Règles de la comparaison fixées par moi (à confirmer)
+- **Formule** (dimension 2) : un segment est « dans une formule » s'il partage un bloc
+  d'au moins 3 cases avec un autre segment de la même forme (`comparison.formula_min_block`).
+- **Covariation** (dimension 20) : dans une famille mixte, une colonne où chaque forme a ses
+  propres remplissages, jamais ceux de l'autre, sur au moins 3 segments (D-10), le
+  remplissage dominant couvrant au moins 75 % de ses segments (D-09). Sans cette dernière
+  condition, des colonnes très variables passaient pour des covariations.
+- **Position du segment dans l'آية** (dimension 5) : أول الآية (commence au mot 1), آخر الآية
+  (finit au dernier mot), آية كاملة, وسط الآية.
+- **Ensembles fixes ou variables** (dimension 8) : pour chaque racine compagne (autre que la
+  racine étudiée), les formes rencontrées et leur nombre.
+
+### Q32 — Recherche en orthographe courante
+Le texte ʿuthmānī écrit souvent l'alif long par un alif suscrit (`عَٰلِم`, `عَلَّٰم`). Taper
+`عالم` ne trouvait rien. Ajout d'une colonne `units.spelling` (squelette avec l'alif suscrit
+écrit en alif), utilisée **seulement** quand la recherche exacte ne trouve rien ; les formes
+trouvées sont toujours listées à part, jamais fusionnées. Ce n'est qu'une aide à la saisie,
+jamais une base de comparaison.
+
+Correction au passage (niveau 0) : le وزن d'un nom avec alif suscrit après une shadda
+(`عَلَّٰم`) n'était pas reconnu ; il l'est maintenant (`فَعَّال` → case « ملتبسة : صيغة مبالغة »).

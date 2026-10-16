@@ -68,6 +68,13 @@ def test_detail_shows_the_pairs(client):
     assert "13:26:1-6 / 16:75:1-19" in full and "13:26:1-6 / 16:75:1-19" not in light
 
 
+def test_comparison_of_two_forms(client):
+    body = client.get("/api/comparer", params={"a": to_arabic("EAlm"), "b": to_arabic("ElAm"), "pause": "souple"}).json()
+    assert "مقارنة صيغتين" in body["html"] and "تغاير" in body["html"]
+    response = client.get("/api/comparer", params={"a": to_arabic("yqdr"), "b": to_arabic("EAlm")})
+    assert response.status_code == 400
+
+
 def test_pair(client):
     body = client.get("/api/paire", params={"a": "34:36:1-8", "b": "17:30:1-7", "pivot": to_arabic("yqdr")}).json()
     assert "تطابق جزئي (R1 partiel)" in body["html"] and "O2 استبدال" in body["html"]

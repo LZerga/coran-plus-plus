@@ -121,7 +121,7 @@ def pattern_of(stem: str, root: str, noun: bool = False) -> str | None:
         if removed.startswith(TANWEEN_FATH) and text.endswith("ا"):
             text = text[:-1]
         text = next((text[: -len(e)] for e in _ENDINGS if text.endswith(e) and len(text) > len(e) + 2), text)
-        text = text.replace("َٰ", "َا")
+        text = text.replace("ٰ", "ا")
     out, radical = [], 0
     for ch in text:
         if radical < len(root) and ch == root[radical]:
@@ -130,6 +130,22 @@ def pattern_of(stem: str, root: str, noun: bool = False) -> str | None:
         else:
             out.append(ch)
     return "".join(out).replace("ٱ", "ا") if radical == len(root) else None
+
+
+def canonical(pattern: str) -> str:
+    """The marks after each letter in one fixed order, so that two writings of a pattern compare equal."""
+    out, marks = [], []
+    for ch in pattern:
+        if ch in LETTERS or ch in "فعل":
+            out += sorted(marks)
+            marks = []
+            out.append(ch)
+        else:
+            marks.append(ch)
+    return "".join(out + sorted(marks))
+
+
+AMBIGUOUS_BY_CANON = {canonical(p): kinds for p, kinds in AMBIGUOUS_PATTERNS.items()}
 
 
 def _vowel_of_second_radical(stem: str, root: str) -> str | None:
@@ -213,8 +229,8 @@ def identity(connection: sqlite3.Connection, root: str) -> Identity | None:
             pattern = pattern_of(stem, root, noun=True) or UNDETERMINED
             kind = next((NOUN_TYPES[f] for f in features if f in NOUN_TYPES and (f == "VN" or "PCPL" in features)), None)
             kind = kind or TAG_TYPES.get(tag)
-            if kind is None and pattern in AMBIGUOUS_PATTERNS:
-                kind = "ambiguë : " + " / ".join(AMBIGUOUS_PATTERNS[pattern])
+            if kind is None and canonical(pattern) in AMBIGUOUS_BY_CANON:
+                kind = "ambiguë : " + " / ".join(AMBIGUOUS_BY_CANON[canonical(pattern)])
             if kind is None:
                 kind = UNSPECIFIED if tag in ("N", "ADJ") else f"غير الاسم والفعل ({tag})"
             definite = "نكرة" if "INDEF" in features else "معرّف بأل" if has_article else "معرّف بالإضافة" if has_pronoun else ""
