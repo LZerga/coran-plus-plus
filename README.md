@@ -1,45 +1,47 @@
 # Coran++
 
-Harnais d'étude des corrélations coraniques, d'après le document de recherche
-« ملاحظات نقدية عامة حول العقل اللغوي العربي » (`docs/document_de_recherche.pdf`).
+A descriptive toolkit for studying correlations between word forms within Quranic roots,
+based on the research paper « ملاحظات نقدية عامة حول العقل اللغوي العربي »
+(`docs/document_de_recherche.pdf`).
 
-Auteur : Lotfi Zerga.
+Author: Lotfi Zerga.
 
-L'outil décrit ce qu'il observe, sans interprétation :
+The tool describes what it observes, without interpretation:
 
-0. **Identité de la racine** (هوية الجذر) : formes de la racine employées dans le Coran,
-   rangées selon les catégories du الصرف.
-1. **Paires** : chaque paire de segments où apparaît une forme est comparée seule, et
-   classée en تطابق / تشابه / اختلاف.
-2. **Familles** : la typologie regroupe les segments.
-3. **Matrices** d'alignement par famille (en cours).
+0. **Root identity** (هوية الجذر): the forms of a root used in the Quran, arranged by the
+   categories of الصرف.
+1. **Pairs**: every pair of segments containing a given form is compared on its own and
+   classified as تطابق / تشابه / اختلاف.
+2. **Families**: the typology groups the segments.
+3. **Alignment matrices** per family (in progress).
 
-Le texte coranique (Tanzil, lecture Hafs) n'est jamais modifié. Chaque résultat renvoie à
-ses références (sourate:verset:mot), à la lecture et à la version du code.
+The Quranic text (Tanzil, Hafs reading) is never modified. Every result points back to its
+references (sura:aya:word), the reading used and the code version.
 
 ## Documents
 
-| Fichier | Rôle |
+The working documentation is in French; the research is written in Arabic.
+
+| File | Role |
 |---|---|
-| `SPEC.md` | spécification de la méthode |
-| `DECISIONS.md` | décisions de méthode de l'auteur |
-| `QUESTIONS.md` | journal de développement : constats, questions, réglages |
-| `CHANGELOG.md` | évolutions de la spécification |
-| `data/SOURCES.md` | provenance, licences et hashes des données |
+| `SPEC.md` | specification of the method |
+| `DECISIONS.md` | method decisions by the author |
+| `QUESTIONS.md` | development log: findings, open questions, settings |
+| `CHANGELOG.md` | changes to the specification |
+| `data/SOURCES.md` | provenance, licences and hashes of the data |
 
-## Installation et commandes
+## Setup and commands
 
-Python 3.11 ou plus et [uv](https://docs.astral.sh/uv/).
+Python 3.11 or later and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync
-uv run python -m quran_harness sources fetch    # télécharge les données dans data/raw/
-uv run python -m quran_harness build            # construit data/processed/quran.db
-uv run python -m quran_harness identite قدر     # niveau 0
-uv run python -m quran_harness familles يقدر    # niveaux 1 et 2
+uv run python -m quran_harness sources fetch    # downloads the data into data/raw/
+uv run python -m quran_harness build            # builds data/processed/quran.db
+uv run python -m quran_harness identite قدر     # level 0
+uv run python -m quran_harness familles يقدر    # levels 1 and 2
 uv run pytest                                   # tests
 ```
 
-Les données téléchargées et la base construite ne sont pas versionnées : elles se
-reconstruisent avec les deux premières commandes. Certaines sources interdisent l'usage
-commercial (voir `data/SOURCES.md`).
+Downloaded data and the built database are not versioned: the first two commands rebuild
+them. Some sources forbid commercial use (see `data/SOURCES.md`).
