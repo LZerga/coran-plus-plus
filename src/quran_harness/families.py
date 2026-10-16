@@ -158,43 +158,50 @@ def forms_for(connection: sqlite3.Connection, typed: str, form_settings: FormSet
 # --- Rendering (Markdown, light tables) -------------------------------------------
 
 
-def render(analysis: Analysis, meta: dict[str, str], settings: FamilySettings) -> str:
+def render(analysis: Analysis, meta: dict[str, str], settings: FamilySettings, matrices: list | None = None) -> str:
     from collections import Counter
+
+    from .labels import meta_line, t
 
     rows = analysis.rows
     types = Counter(" + ".join(s.types) for s in analysis.signatures.values())
+    families = [f for f in analysis.families if not f.isolated]
     lines = [
-        f"# Familles — forme {analysis.form}",
+        f"# {t('families_title')} — {t('form')} {analysis.form}",
         "",
-        f"lecture : {meta['reading']} · découpage : {analysis.scheme} · code {meta['code_version']} · "
-        f"lien : R1 ou R2 et au moins {settings.link_min_common} élément(s) commun(s) hors pivot · "
-        f"cohésion minimale {settings.cohesion_min:.0%}",
+        meta_line(meta, f"{t('scheme')} : {t(analysis.scheme)}"),
         "",
-        f"- {len(rows)} lignes (occurrences), {len(analysis.signatures)} paires : "
-        + ", ".join(f"{t} {n}" for t, n in types.most_common()),
-        f"- {sum(1 for f in analysis.families if not f.isolated)} famille(s), "
-        f"{sum(1 for f in analysis.families if f.isolated)} usage(s) isolé(s)",
+        f"- {t('link_rule', n=settings.link_min_common)} ؛ {t('cohesion_min')} : {settings.cohesion_min:.0%}",
+        f"- {t('rows')} : {len(rows)} ؛ {t('pairs')} : {len(analysis.signatures)} ("
+        + "، ".join(f"{' + '.join(t(k) for k in kinds.split(' + '))} ({kinds}) : {n}" for kinds, n in types.most_common())
+        + ")",
+        f"- {t('families_title')} : {len(families)} ؛ {t('isolated')} : {len(analysis.families) - len(families)}",
     ]
     if analysis.twins:
-        lines.append(f"- {len(analysis.twins)} paire(s) de lignes dans un même segment (comptées une fois)")
-    lines += ["", "| Famille | Lignes | Cohésion | Liens coupés | Segments |", "|---|---|---|---|---|"]
+        lines.append(f"- {t('twins')} : {len(analysis.twins)}")
+    head = (t("family"), t("rows"), t("cohesion"), t("cuts"), t("segments"))
+    lines += ["", "| " + " | ".join(head) + " |", "|---|---|---|---|---|"]
     for number, family in enumerate(analysis.families, start=1):
-        name = "isolé" if family.isolated else str(number)
-        cuts = ", ".join(f"{rows[i].segment_ref}–{rows[j].segment_ref} ({w})" for i, j, w in family.cuts) or "—"
+        name = t("isolated") if family.isolated else str(number)
+        cuts = "، ".join(f"{rows[i].segment_ref}–{rows[j].segment_ref} ({w})" for i, j, w in family.cuts) or "—"
         lines.append(
             f"| {name} | {len(family.rows)} | {family.cohesion:.0%} | {cuts} | "
-            + ", ".join(rows[i].segment_ref for i in family.rows) + " |"
+            + "، ".join(rows[i].segment_ref for i in family.rows) + " |"
         )
-    lines += ["", "## Lignes", "", "| n° | Segment | Texte |", "|---|---|---|"]
+    lines += ["", f"## {t('rows')}", "", f"| | {t('segment')} | {t('text')} |", "|---|---|---|"]
     for number, row in enumerate(rows, start=1):
         text = " ".join(f"**{c.text}**" if k == row.pivot else c.text for k, c in enumerate(row.cells))
         lines.append(f"| {number} | {row.segment_ref} | {text} |")
-    lines += ["", "## Paires", "", "| A | B | Types | Communs hors pivot | Opérations |", "|---|---|---|---|---|"]
+    if matrices:
+        from .matrix import render as render_matrices
+
+        lines += render_matrices(analysis, matrices)
+    head = ("أ", "ب", t("types"), t("common_outside_pivot"), t("operations"))
+    lines += ["", f"## {t('pairs')}", "", "| " + " | ".join(head) + " |", "|---|---|---|---|---|"]
     for (i, j), signature in sorted(analysis.signatures.items()):
-        kinds = signature.kinds()
-        operations = " ".join(f"{k}×{n}" for k, n in sorted(kinds.items())) or "—"
+        operations = " ".join(f"{k}×{n}" for k, n in sorted(signature.kinds().items())) or "—"
+        kinds = " + ".join(f"{t(k)} ({k})" for k in signature.types)
         lines.append(
-            f"| {rows[i].segment_ref} | {rows[j].segment_ref} | {' + '.join(signature.types)} | "
-            f"{signature.common_outside_pivot} | {operations} |"
+            f"| {rows[i].segment_ref} | {rows[j].segment_ref} | {kinds} | {signature.common_outside_pivot} | {operations} |"
         )
     return "\n".join(lines) + "\n"

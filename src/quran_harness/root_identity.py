@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 
 from . import alt_roots
 from .index import search_key
+from .labels import meta_line, t
 from .normalize import LETTERS, TANWEEN_FATH, Level, drop_assimilation_shadda, normalize, split_final_vowel
 
 # Verb forms as numbered by the corpus (corpus.quran.com/documentation/verbforms.jsp).
@@ -254,41 +255,45 @@ def _refs(entries: list[Entry]) -> str:
     return ", ".join(refs[:MAX_REFS]) + (f", … (+{len(refs) - MAX_REFS})" if len(refs) > MAX_REFS else "")
 
 
+def _kind(kind: str) -> str:
+    return kind.replace("ambiguë", t("ambiguous"), 1)
+
+
 def render(found: Identity, meta: dict[str, str]) -> str:
     lines = [
-        f"# هوية الجذر — racine {found.root}",
+        f"# {t('identity')} — {found.root}",
         "",
-        f"lecture : {meta['reading']} · code {meta['code_version']} · catégories : annotation du corpus (QAC)",
+        meta_line(meta, t("categories")),
         "",
-        f"- {found.letters} ; {found.nature}",
-        f"- {found.total} occurrences : {found.n_verbs} verbes, {found.n_nouns} noms",
+        f"- {found.letters} ؛ {found.nature}",
+        f"- {t('occurrences')} : {found.total} ؛ {t('verbs')} : {found.n_verbs} ؛ {t('nouns')} : {found.n_nouns}",
     ]
     if found.bab:
-        lines.append("- Voyelle de la عين au وزن I (lue sur le الشكل) : " + " ; ".join(f"{t} : {v}" for t, v in found.bab.items()))
+        lines.append(f"- {t('bab_line')} : " + " ؛ ".join(f"{k} : {v}" for k, v in found.bab.items()))
 
-    lines += ["", "## الأفعال", ""]
+    lines += ["", f"## {t('verbs')}", ""]
     if found.verbs:
         columns = [c for c in VERB_COLUMNS if any(column == c for _, column in found.verbs)]
-        lines += ["| وزن | " + " | ".join(columns) + " |", "|---|" + "---|" * len(columns)]
+        lines += [f"| {t('wazn')} | " + " | ".join(columns) + " |", "|---|" + "---|" * len(columns)]
         for wazn in dict.fromkeys(w for w, _ in found.verbs):
             cells = [_entries(found.verbs.get((wazn, c), [])) or "—" for c in columns]
             lines.append(f"| {wazn} | " + " | ".join(cells) + " |")
     else:
-        lines.append("Aucun verbe de cette racine dans le Coran.")
-    lines += ["", "Absents du Coran : " + (" ، ".join(found.absent_verbs) or "—")]
+        lines.append(t("no_verb"))
+    lines += ["", f"{t('absent')} : " + (" ، ".join(found.absent_verbs) or "—")]
 
-    lines += ["", "## الأسماء", ""]
+    lines += ["", f"## {t('nouns')}", ""]
     if found.nouns:
-        lines += ["| Type | وزن de dérivation | وزن | Formes | Références |", "|---|---|---|---|---|"]
+        head = (t("kind"), t("derivation"), t("wazn"), t("forms"), t("refs"))
+        lines += ["| " + " | ".join(head) + " |", "|---|---|---|---|---|"]
         for (kind, number, pattern), entries in sorted(found.nouns.items(), key=lambda item: -sum(len(e.refs) for e in item[1])):
-            lines.append(f"| {kind} | {number} | {pattern} | {_entries(entries)} | {_refs(entries)} |")
+            lines.append(f"| {_kind(kind)} | {number} | {pattern} | {_entries(entries)} | {_refs(entries)} |")
     else:
-        lines.append("Aucun nom de cette racine dans le Coran.")
+        lines.append(t("no_noun"))
     lines += [
         "",
-        "Types donnés par le corpus et absents du Coran : " + (" ، ".join(found.absent_nouns) or "—"),
+        f"{t('absent_types')} : " + (" ، ".join(found.absent_nouns) or "—"),
         "",
-        "Formes possibles en arabe mais non employées dans le Coran (attestées, théoriques) : "
-        "non calculées — les sources lexicales ne sont pas encore intégrées (lot F).",
+        f"{t('unused_forms')} : {t('not_computed')}",
     ]
     return "\n".join(lines) + "\n"

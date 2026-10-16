@@ -161,7 +161,7 @@ def test_command_line(built_db, monkeypatch, capsys):
     monkeypatch.setattr(ingest, "DB_PATH", built_db)
     assert cli.main(["paire", "34:36:1-8", "17:30:1-7", "--pivot", to_arabic("yqdr")]) == 0
     output = capsys.readouterr().out
-    assert "R1 partiel" in output and "R2" in output and "O2 E2" in output
+    assert "تطابق جزئي (R1 partiel)" in output and "تشابه (R2)" in output and "O2 استبدال ، E2" in output
 
 
 @pytest.mark.parametrize("code", [E0, E1, E2, E3, E4])

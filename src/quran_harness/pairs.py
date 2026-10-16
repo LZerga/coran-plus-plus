@@ -27,6 +27,8 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
+from .labels import t
+
 E0, E1, E2, E3, E4, ABSENT = "E0", "E1", "E2", "E3", "E4", "Ø"
 COMMON = (E0, E1, E2, E3)
 R1_TOTAL, R1_PARTIAL, R2, R3 = "R1 total", "R1 partiel", "R2", "R3"
@@ -334,8 +336,20 @@ def cells_of_segment(connection: sqlite3.Connection, segment_id: int) -> list[Ce
 # --- Rendering ------------------------------------------------------------------
 
 
+def _detail(op: Operation) -> str:
+    if op.kind == "O2":
+        code, _, note = op.detail.partition(" (")
+        return code + (f" ({t(note.rstrip(')'))})" if note else "")
+    if op.kind == "O3":
+        return f"{t('inverted')} : {op.detail.split()[0]}"
+    if op.kind == "O5":
+        before, _, after = op.detail.partition(" → ")
+        return f"{t(before)} ← {t(after)}"
+    return t(op.detail)
+
+
 def describe(a: Sequence[Cell], b: Sequence[Cell], signature: Signature) -> dict[str, str]:
-    """The parts of a signature, as short text."""
+    """The parts of a signature, as short text, labelled in Arabic; codes kept beside the labels."""
 
     def text(cells: Sequence[Cell], indexes: Sequence[int]) -> str:
         return " ".join(cells[i].text for i in indexes)
@@ -344,16 +358,16 @@ def describe(a: Sequence[Cell], b: Sequence[Cell], signature: Signature) -> dict
     operations = []
     for op in signature.operations:
         if op.kind == "O2":
-            what = f"{text(a, op.a)} → {text(b, op.b)}"
+            what = f"{text(a, op.a)} ← {text(b, op.b)}"
         elif op.kind == "O1":
             what = text(a, op.a) or text(b, op.b)
         else:
             what = ""
-        operations.append(f"{op.kind} {op.detail}" + (f" : {what}" if what else "") + f" [{op.distance}]")
+        operations.append(f"{op.kind} {t(op.kind)} ، {_detail(op)}" + (f" : {what}" if what else "") + f" [{t(op.distance)}]")
     return {
-        "types": " + ".join(f"{t} ({TYPE_LABELS[t]})" for t in signature.types),
-        "blocs": " | ".join(blocks) or "—",
-        "opérations": " ; ".join(operations) or "—",
-        "ordre": " ".join(map(str, signature.order[1])) + f" ({signature.inversions} inversion(s))",
-        "codes": " ".join(f"{code}:{n}" for code, n in sorted(signature.codes.items())),
+        t("types"): " + ".join(f"{t(kind)} ({kind})" for kind in signature.types),
+        t("blocks"): " | ".join(blocks) or "—",
+        t("operations"): " ؛ ".join(operations) or "—",
+        t("order"): " ".join(map(str, signature.order[1])) + f" ({t('inversions')} : {signature.inversions})",
+        t("codes"): " ".join(f"{code}:{n}" for code, n in sorted(signature.codes.items())),
     }

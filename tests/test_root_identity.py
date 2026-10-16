@@ -92,5 +92,6 @@ def test_command_line(built_db, monkeypatch, capsys):
     monkeypatch.setattr(ingest, "DB_PATH", built_db)
     assert cli.main(["identite", QDR]) == 0
     output = capsys.readouterr().out
-    assert "## الأفعال" in output and "## الأسماء" in output and "132 occurrences" in output
-    assert "non calculées" in output  # forms not used in the Quran: lot F
+    assert "## الأفعال" in output and "## الأسماء" in output and "مرات الورود : 132" in output
+    assert "لم تحسب بعد" in output  # forms not used in the Quran: lot F
+    assert "ملتبسة : صيغة مبالغة / صفة مشبهة" in output

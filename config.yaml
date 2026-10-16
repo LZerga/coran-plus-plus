@@ -37,6 +37,9 @@ families:               # niveau 2 : familles tracées par la typologie (SPEC §
   link_min_common: 1
   cohesion_min: 0.5     # part minimale des paires internes en R1 ou R2   (D-15)
 
+matrix:                 # niveau 3 : matrices d'alignement (SPEC §2.5)
+  relative_min: 0.75    # colonne « relativement fixe » : même forme dans cette part des lignes   (D-09)
+
 # Les sections reference_form, normalization, equivalence, relations et usage_groups
 # viennent de la spécification v0. Elles servent encore à l'ancienne fiche et seront
 # remplacées au lot D (docs/PLAN_ADAPTATION.md).

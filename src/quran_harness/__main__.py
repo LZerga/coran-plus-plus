@@ -179,29 +179,31 @@ def _open_database() -> tuple[sqlite3.Connection, dict[str, str]]:
 
 
 def _racine(args: argparse.Namespace) -> int:
+    from .labels import meta_line, t
     from .units import forms_of_root
 
     connection, meta = _open_database()
     rows = forms_of_root(connection, args.racine)
-    print(f"Racine {args.racine}")
-    print(f"lecture : {meta['reading']} | forme : {FORM_LABEL} | code {meta['code_version']}")
+    print(f"{t('root')} : {args.racine}")
+    print(meta_line(meta, t("form_rule")))
     if not rows:
-        print("Aucune forme trouvée pour cette racine.")
+        print(t("no_root_form"))
         return 1
-    print(f"{'occurrences':>11} {'versets':>8}  forme")
+    print(f"\n{t('occurrences'):>12} {t('ayas'):>6}  {t('form')}")
     for row in rows:
-        print(f"{row.occurrences:>11} {row.ayas:>8}  {row.form}")
-    print(f"{sum(r.occurrences for r in rows):>11}           total, {len(rows)} formes")
+        print(f"{row.occurrences:>12} {row.ayas:>6}  {row.form}")
+    print(f"\n{t('total')} : {sum(r.occurrences for r in rows)} ؛ {t('forms')} : {len(rows)}")
     return 0
 
 
 def _identite(args: argparse.Namespace) -> int:
     from . import root_identity
+    from .labels import t
 
     connection, meta = _open_database()
     found = root_identity.identity(connection, args.racine)
     if found is None:
-        print(f"Aucune occurrence pour la racine {args.racine}.")
+        print(t("no_root"))
         return 1
     _write(root_identity.render(found, meta), args.sortie)
     return 0
@@ -209,34 +211,38 @@ def _identite(args: argparse.Namespace) -> int:
 
 def _pivot(cells, typed: str) -> int:
     from .index import search_key
+    from .labels import t
     from .normalize import Level, normalize
 
     key = search_key(typed)
     found = next((i for i, cell in enumerate(cells) if normalize(cell.form, Level.NO_VOWELS).replace("ٱ", "ا") == key), None)
     if found is None:
-        raise SystemExit(f"La forme {typed} n'est pas dans le passage {' '.join(c.text for c in cells)}.")
+        raise SystemExit(t("not_in_span", form=typed, text=" ".join(c.text for c in cells)))
     return found
 
 
 def _paire(args: argparse.Namespace) -> int:
     from . import pairs
     from .elements import parse_span
+    from .labels import meta_line, t
 
     connection, meta = _open_database()
     a, b = (pairs.cells_of_span(connection, *parse_span(span)) for span in (args.a, args.b))
     signature = pairs.compare(a, _pivot(a, args.pivot), b, _pivot(b, args.pivot), pairs.PairSettings.from_config(load_config()))
     lines = [
-        f"Paire | lecture : {meta['reading']} | forme de référence : {args.pivot} | code {meta['code_version']}",
-        f"A  {args.a}  {' '.join(c.text for c in a)}",
-        f"B  {args.b}  {' '.join(c.text for c in b)}",
-        *(f"{label:<12} {value}" for label, value in pairs.describe(a, b, signature).items()),
+        f"{t('pair')} — {t('reference_form')} : {args.pivot}",
+        meta_line(meta),
+        f"أ  {args.a}  {' '.join(c.text for c in a)}",
+        f"ب  {args.b}  {' '.join(c.text for c in b)}",
+        *(f"{label} : {value}" for label, value in pairs.describe(a, b, signature).items()),
     ]
     _write("\n".join(lines), args.sortie)
     return 0
 
 
 def _familles(args: argparse.Namespace) -> int:
-    from . import families, pairs
+    from . import families, matrix, pairs
+    from .labels import t
     from .segmentation import selected_scheme
     from .units import FormSettings
 
@@ -244,35 +250,36 @@ def _familles(args: argparse.Namespace) -> int:
     config = with_choices(load_config(), None, args.pause)
     candidates = families.forms_for(connection, args.forme, FormSettings.from_config(config))
     if not candidates:
-        print(f"Aucune occurrence pour la forme {args.forme}.")
+        print(t("no_occurrence"))
         return 1
     form = next(iter(candidates))
     if len(candidates) > 1:
-        others = ", ".join(f"{f} ({n})" for f, n in list(candidates.items())[1:])
-        print(f"{args.forme} recouvre plusieurs formes ; retenue : {form} ({candidates[form]}) ; "
-              f"les autres ({others}) se demandent avec leurs voyelles.\n")  # fmt: skip
+        others = "، ".join(f"{f} ({n})" for f, n in list(candidates.items())[1:])
+        print(t("retained", typed=args.forme, form=form, n=candidates[form], others=others) + "\n")
     settings = families.FamilySettings.from_config(config)
     analysis = families.analyse(connection, form, selected_scheme(config), pairs.PairSettings.from_config(config), settings)
-    _write(families.render(analysis, meta, settings), args.sortie)
+    matrices = matrix.build_all(analysis, config["matrix"]["relative_min"])
+    _write(families.render(analysis, meta, settings, matrices), args.sortie)
     return 0
 
 
 def _forme(args: argparse.Namespace) -> int:
+    from .labels import meta_line, t
     from .units import FormSettings, by_form, occurrences_of_form
 
     connection, meta = _open_database()
     groups = by_form(occurrences_of_form(connection, args.forme, FormSettings.from_config(load_config())))
-    print(f"Forme {args.forme}")
-    print(f"lecture : {meta['reading']} | forme : {FORM_LABEL} | code {meta['code_version']}")
+    print(f"{t('form')} : {args.forme}")
+    print(meta_line(meta, t("form_rule")))
     if not groups:
-        print("Aucune occurrence.")
+        print(t("no_occurrence"))
         return 1
     if len(groups) > 1:
-        print(f"\nLa saisie recouvre {len(groups)} formes, gardées séparées :")
+        print("\n" + t("covers", n=len(groups)))
     for form, group in groups.items():
         ayas = {occurrence.aya_ref for occurrence in group}
         roots = sorted({occurrence.roots for occurrence in group if occurrence.roots})
-        print(f"\n{form} | racine {', '.join(roots) or '—'} : {len(group)} occurrences dans {len(ayas)} versets")
+        print(f"\n{form} ؛ {t('root')} : {'، '.join(roots) or '—'} ؛ {t('occurrences')} : {len(group)} ؛ {t('ayas')} : {len(ayas)}")
         for occurrence in group:
             print(f"  {occurrence.word_ref:<12} {occurrence.text}")
     return 0
@@ -295,10 +302,12 @@ def _web(args: argparse.Namespace) -> int:
 
 
 def _write(text: str, path: str | None) -> None:
+    from .labels import t
+
     if path:
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
-        print(f"Écrit : {path}")
+        print(t("written", path=path))
     else:
         print(text)
 

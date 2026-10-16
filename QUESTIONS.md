@@ -920,3 +920,52 @@ n'ai mis que ce que le SPEC §2.0 écrit lui-même :
 Matrices d'alignement par famille (§2.5), contrôle de cohérence paires ↔ matrice (§2.6),
 stockage (`pair_signatures`, `families`…), nouvelle fiche et retrait de l'ancien chemin
 avec lemme (`compare.py`, `elements.py`, `fiche.py`).
+
+---
+
+## Interface en arabe et matrices (2026-10-16)
+
+**Décision de l'utilisateur — interface en arabe** : interface web et ligne de commande en
+arabe ; les codes courts (E0–E4, O1–O5, R1–R3) sont gardés à côté des libellés ; chiffres
+occidentaux. *Écart avec `CLAUDE.md`* (« messages utilisateur en français ») : la décision
+de l'utilisateur est appliquée ; `CLAUDE.md` est à mettre à jour côté conception. Le code,
+les tests et ce journal restent en français.
+- Tous les libellés sont dans `src/quran_harness/labels.py` ; on corrige un terme là, sans
+  toucher aux calculs. Termes proposés : `docs/GLOSSAIRE_INTERFACE.md`, **pas encore
+  validés terme à terme** par l'auteur.
+- Passés en arabe : `identite`, `racine`, `forme`, `paire`, `familles` (avec matrices).
+  Pas encore : l'interface web et l'ancienne fiche, qui seront remplacées par la nouvelle
+  fiche (étape suivante).
+
+**Lot D, niveau 3 : matrices** (`src/quran_harness/matrix.py`, `tests/test_matrix.py`).
+La commande `familles` affiche maintenant la matrice et le gabarit de chaque famille.
+
+| Famille | Colonnes | Écarts paires ↔ matrice | Gabarit (cœur) |
+|---|---|---|---|
+| Les 9 segments de la formule (souple) | 23 | 2 / 36 | `[intro] {الله|ربي|ربك} يبسط الرزق لمن يشاء [من عباده] و يقدر [له …]` |
+| Les 12 segments, réglage de l'utilisateur (souple) | 32 | 22 / 66 | même cœur, avec les segments de سورة النحل et سورة البلد |
+
+- Le gabarit des 9 redonne celui du SPEC §2.11, la واو étant une case à part.
+- Les 2 écarts des 9 viennent de paires directes que la matrice ne peut pas montrer : une
+  `وَ` avant le pivot dans un segment, appariée à une `وَ` après le pivot dans l'autre ;
+  `شيء` ~ `يشاء` (E3) appariés de part et d'autre du pivot. Le SPEC n'attend aucun écart,
+  mais ses extraits sont plus courts que les segments du texte (Q25).
+- Avec les 12 segments, un tiers des paires diffère de la matrice : la famille est
+  hétérogène, ce que le §2.6 prévoit de signaler.
+
+### Q30 — Règles de construction de la matrice (SPEC §2.5 ne les fixe pas toutes)
+1. **Ligne centrale** : celle qui a le plus d'éléments communs (hors pivot) avec les
+   autres ; chaque ligne est placée selon sa comparaison directe avec elle. Égalité entre
+   deux centres qui donnent des gabarits différents → matrice « غير محسومة ».
+2. **Gauche et droite du pivot alignées à part** ; un appariement qui traverse le pivot
+   ou qui est inversé (O3) n'est pas mis en colonne : la case est insérée, et l'ordre reste
+   dans les paires.
+3. **Remplacement** : entre deux ancres, les cases d'une ligne remplissent d'abord les
+   colonnes du centre qu'elle laisse vides, en partant du pivot (O2-E4) ; c'est ce qui met
+   `الله`, `ربي`, `ربك` dans une même colonne.
+4. **Insertion** : les cases restantes vont dans de nouvelles colonnes ; même forme →
+   même colonne ; sinon une colonne libre est partagée (le moins de colonnes) ; à gauche
+   du pivot, on aligne du côté du pivot.
+5. **Une colonne par case**, pas une par bloc : le SPEC dit « les blocs forment chacun une
+   seule unité ». Les blocs n'étant pas les mêmes d'une paire à l'autre, je garde une
+   colonne par case ; un bloc se lit comme une suite de colonnes fixes dans le gabarit.

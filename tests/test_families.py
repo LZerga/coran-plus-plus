@@ -65,4 +65,5 @@ def test_command_line(built_db, monkeypatch, capsys):
     monkeypatch.setattr(ingest, "DB_PATH", built_db)
     assert cli.main(["familles", to_arabic("yqdr"), "--pause", "souple"]) == 0
     output = capsys.readouterr().out
-    assert "66 paires" in output and "waqf-souple" in output and "retenue" in output
+    assert "المقارنات الثنائية : 66" in output and "تقطيع مرن" in output and "اختيرت" in output
+    assert "القالب" in output  # the matrix of the family

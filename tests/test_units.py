@@ -162,8 +162,8 @@ def test_command_line_prints_traceable_output(built_db, monkeypatch, capsys):
     monkeypatch.setattr(ingest, "DB_PATH", built_db)
     assert cli.main(["forme", YAQDIR]) == 0
     output = capsys.readouterr().out
-    assert "lecture : hafs" in output and f"code {__version__}" in output
-    assert "12 occurrences dans 12 versets" in output and "1 occurrences dans 1 versets" in output
+    assert "الرواية : حفص" in output and f"نسخة البرنامج {__version__}" in output
+    assert "مرات الورود : 12 ؛ آيات : 12" in output and "مرات الورود : 1 ؛ آيات : 1" in output
     assert "90:5:4" in output
     assert cli.main(["racine", to_arabic("qdr")]) == 0
-    assert "total, 46 formes" in capsys.readouterr().out
+    assert "المجموع : 132 ؛ الصيغ : 46" in capsys.readouterr().out
