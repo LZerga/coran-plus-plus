@@ -1,0 +1,79 @@
+# config.yaml — Choix de méthode du harnais.
+# Valeurs par défaut du SPEC. Les points ouverts renvoient à QUESTIONS.md (Qn).
+
+reading: hafs
+
+segmentation:
+  scheme: waqf          # waqf | aya            (Q1)
+  pause_level: strict   # strict | souple       (Q1)
+  # Marques de pause qui ferment un segment, pour chaque niveau. La fin de verset
+  # ferme toujours un segment. Noms : lazim (م), qala (قلى), jaiz (ج), sala (صلى).
+  pause_levels:
+    strict: [lazim, qala]              # pause obligatoire ou préférable
+    souple: [lazim, qala, jaiz, sala]  # toutes les pauses permises
+  # Paire de trois points (∴ ∴) : on s'arrête à l'une des deux, pas aux deux.
+  muanaqa: none         # none | first | second   (Q16)
+
+form:                   # la forme d'une case (DECISIONS.md D-02, D-03, D-04)
+  # واو collées en tête de mot que l'on met à part, selon l'étiquette du corpus :
+  # عاطفة CONJ, استئنافية REM, حالية CIRC, زائدة SUP, قسم P, معية COM.
+  # Décision de l'utilisateur (2026-10-12) : les six.   (Q20)
+  detached_waw_tags: [CONJ, REM, CIRC, SUP, P, COM]
+  # Signes qui tiennent au mot voisin : shadda d'assimilation de la première lettre
+  # (لَّا / لَا), alif suscrit final absent devant un alif de liaison (عَلَى / عَلَىٰ).   (Q21)
+  assimilation_marks_in_form: false
+  final_vowel_in_form: false          # voyelle finale, الإعراب   (D-04, Q27)
+
+pairs:                  # niveau 1 : comparaison directe de deux segments (SPEC §2.3)
+  min_block: 2          # cases E0 consécutives pour un bloc (تطابق جزئي)
+  r2_min_common: 2      # éléments communs (E0 à E3) hors blocs pour تشابه
+  # La forme de référence compte parmi les éléments communs.
+  # Décision de l'utilisateur (2026-10-16), comme le document.   (Q23)
+  pivot_counts: true
+
+families:               # niveau 2 : familles tracées par la typologie (SPEC §2.4)
+  # Une paire R1 ou R2 relie deux segments s'ils ont au moins ce nombre d'éléments
+  # communs en plus de la forme de référence. Décision de l'utilisateur (2026-10-16).   (Q23, D-08)
+  link_min_common: 1
+  cohesion_min: 0.5     # part minimale des paires internes en R1 ou R2   (D-15)
+
+# Les sections reference_form, normalization, equivalence, relations et usage_groups
+# viennent de la spécification v0. Elles servent encore à l'ancienne fiche et seront
+# remplacées au lot D (docs/PLAN_ADAPTATION.md).
+reference_form:
+  match_level: 0       # 0 = mot écrit, clitiques collés ; 1 = sans clitiques   (Q2)
+  article_is_clitic: false      # au niveau 1, retirer aussi l'article ال       (Q14)
+  disambiguate_by_lemma: true   # pas de fusion silencieuse des homographes     (Q7)
+
+normalization:
+  comparison_level: 2   # texte comparé : 1 = avec voyelles, 2 = sans voyelles   (Q12)
+
+equivalence:            # échelle 0 à 3 du SPEC §2   (Q3)
+  identity_levels: [0]
+  similarity_levels: [1, 2, 3]
+
+relations:
+  min_identical_block: 2        # éléments consécutifs identiques pour تطابق
+  min_common_elements: 2        # éléments communs pour تشابه
+  reference_counts_as_element: true   # (Q4)
+  max_pairs: 20000              # au-delà, les segments ne sont pas comparés deux à deux
+
+statistics:             # (Q10)
+  seed: 20261010
+  permutations: 1000
+  # Contrôles aléatoires : on mélange les mots entre segments en gardant la taille des
+  # segments. corpus = dans tout le texte (SPEC) ; sura = à l'intérieur de chaque sourate.
+  controls: [corpus, sura]
+  alpha: 0.05           # seuil, appliqué après correction pour tests multiples
+  min_cooccurrence: 2   # en dessous, l'association est dite trop rare pour conclure
+
+assistant:              # étape 9, facultative : reformulation d'un résumé par un modèle
+  model: claude-opus-5-5
+  effort: medium        # low | medium | high | xhigh | max
+  max_tokens: 16000
+  max_companions: 8     # compagnons décrits dans le résumé, par ordre de segments communs
+  max_suggestions: 5    # formes proposées à la comparaison
+
+usage_groups:
+  # Relations qui relient deux segments dans un même groupe d'usages (bloc C).
+  links: [identity_total, identity_partial]

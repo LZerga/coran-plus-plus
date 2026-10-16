@@ -1,0 +1,15 @@
+# Phrases citées par le SPEC §2 comme cas de test tirés du document de recherche.
+# Recopiées telles quelles : orthographe courante, sans voyelles, sans référence.
+# Elles ne sont pas du texte coranique de référence : elles servent seulement à
+# retrouver, dans le texte de base, les passages dont parle le document
+# (QUESTIONS.md, Q1 et Q8). Les références sont calculées, jamais saisies à la main.
+
+examples:
+  - {id: 1a, case: 1, text: "قل إن ربي يبسط الرزق لمن يشاء من عباده ويقدر له"}
+  - {id: 1b, case: 1, text: "قل إن ربي يبسط الرزق لمن يشاء ويقدر له"}
+  - {id: 2a, case: 2, text: "قل إن ربي يبسط الرزق لمن يشاء ويقدر"}
+  - {id: 2b, case: 2, text: "إن ربك يبسط الرزق لمن يشاء ويقدر"}
+  - {id: 3a, case: 3, text: "لا يقدرون مما كسبوا على شيء"}
+  - {id: 3b, case: 3, text: "لا يقدرون على شيء مما كسبوا"}
+  - {id: 4a, case: 4, text: "أيحسب أن لن يقدر عليه أحد"}
+  - {id: 4b, case: 4, text: "عبدا مملوكا لا يقدر على شيء"}

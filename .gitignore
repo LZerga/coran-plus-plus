@@ -1,0 +1,10 @@
+# Données : seuls le manifeste et la documentation sont versionnés.
+# Les fichiers bruts se retéléchargent avec `uv run python -m quran_harness sources fetch`.
+data/raw/
+data/processed/
+sorties/
+
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/

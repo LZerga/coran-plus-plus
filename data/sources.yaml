@@ -1,0 +1,182 @@
+# sources.yaml — Manifeste des fichiers de data/raw/ (lu par quran_harness.sources).
+# La description détaillée (licences, constats) est dans data/SOURCES.md.
+# Les URL GitHub sont épinglées sur un commit pour rester reproductibles.
+
+sources:
+  - id: tanzil-uthmani
+    path: data/raw/tanzil/quran-uthmani.txt
+    url: https://tanzil.net/pub/download/index.php?marks=true&quranType=uthmani&outType=txt-2&agree=true
+    sha256: 54ea3b2f689f39dec2808361fec957f62a965ae029dcde7f9f21d65a844448e5
+    size: 1383970
+    license: CC BY 3.0 + conditions Tanzil (copie à l'identique, modification interdite, mention de la source)
+    retrieved: 2026-10-10
+    requires_terms_acceptance: true
+
+  - id: tanzil-simple-clean
+    path: data/raw/tanzil/quran-simple-clean.txt
+    url: https://tanzil.net/pub/download/index.php?quranType=simple-clean&outType=txt-2&agree=true
+    sha256: 228df2a717671aeb9d2ff573002bd28d6b3f973f4bc7153554e3a81663d67610
+    size: 781176
+    license: CC BY 3.0 + conditions Tanzil (copie à l'identique, modification interdite, mention de la source)
+    retrieved: 2026-10-10
+    requires_terms_acceptance: true
+
+  - id: qac-morphology
+    path: data/raw/qac/quranic-corpus-morphology-0.4.txt
+    url: https://raw.githubusercontent.com/alstat/QuranTree.jl/d7a0fe9c5c7138081aec6683d18e49f9a233d0dd/data/quranic-corpus-morphology-0.4.txt
+    sha256: a1d12923815341face765083805d2148ed2d9f5cc3f7d6665219d887675d8c46
+    size: 6309503
+    license: GNU GPL + conditions QAC (copie à l'identique, modification interdite, mention de la source)
+    retrieved: 2026-10-10
+
+  - id: quran-morphology-mustafa0x
+    path: data/raw/quran-morphology-mustafa0x/quran-morphology.txt
+    url: https://raw.githubusercontent.com/mustafa0x/quran-morphology/8f38b39016824284f9ed16ae15069ff9102c4acf/quran-morphology.txt
+    sha256: 742bfac59941b2cb09736d5b7aae694af50792261fb8450cbf6afafcc340645f
+    size: 6322866
+    license: non déclarée (œuvre dérivée du QAC v0.4, sous GNU GPL)
+    retrieved: 2026-10-10
+
+  - id: quran-morphology-mustafa0x-readme
+    path: data/raw/quran-morphology-mustafa0x/README.md
+    url: https://raw.githubusercontent.com/mustafa0x/quran-morphology/8f38b39016824284f9ed16ae15069ff9102c4acf/README.md
+    sha256: caec314d4c64cc26e27b3c45c12a33be7059a83fc3db385c43615d6a5792ba5f
+    size: 4559
+    license: non déclarée
+    retrieved: 2026-10-10
+
+  - id: masaq
+    path: data/raw/masaq/MASAQ.csv
+    url: https://data.mendeley.com/public-files/datasets/9yvrzxktmr/files/e9e7902c-33b3-4fbd-a661-0f9d74a511b0/file_downloaded
+    sha256: 777d0cc8f24f4c17d07ad83a522056fe7ebd5c83dbbae86161f1fdc95aaca900
+    size: 18650409
+    license: CC BY-NC 3.0
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-hafs
+    path: data/raw/kfgqpc/hafs/hafsData_v18.json
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/hafs/data/hafsData_v18.json
+    sha256: 5d8bb91726e482839d0057633cb1973031e4d706fa9604eea5e08892f20ba140
+    size: 3582144
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-hafs-readme
+    path: data/raw/kfgqpc/hafs/README.md
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/hafs/README.md
+    sha256: 3dc7b9d964ef7ffa268ba8f0ccea96cf9ca9b39a0bf2789b2bf97bd3abab25bf
+    size: 1666
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-warsh
+    path: data/raw/kfgqpc/warsh/warshData_v10.json
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/warsh/data/warshData_v10.json
+    sha256: f05d0dc652fd46b38563cacb13242f76f80db4cc64d25873da0bce157253872f
+    size: 2772330
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-warsh-readme
+    path: data/raw/kfgqpc/warsh/README.md
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/warsh/README.md
+    sha256: 2d4708346ddc8f7f97e79e7093c32096412b637eec2eae9ac003345a9a1f8c6a
+    size: 1473
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-qaloon
+    path: data/raw/kfgqpc/qaloon/QaloonData_v10.json
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/qaloon/data/QaloonData_v10.json
+    sha256: 18465c40ebeec40a92eb98745c9b89796ac6e31f6e93988883dfb6602faaea95
+    size: 2759672
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-qaloon-readme
+    path: data/raw/kfgqpc/qaloon/README.md
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/qaloon/README.md
+    sha256: c127180d8e9aca18f7bfe27c6b7759516c20ac0de66fe00c7d58d64d352e907a
+    size: 1199
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-shouba
+    path: data/raw/kfgqpc/shouba/ShoubaData08.json
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/shouba/data/ShoubaData08.json
+    sha256: f105da3949e0b8092e3abcd23a539c9bef4c9b7474f15d29848471f150ade667
+    size: 2706386
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-shouba-readme
+    path: data/raw/kfgqpc/shouba/README.md
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/shouba/README.md
+    sha256: fc19b6399c19bde17ce362f6619ae91c2f4e6966478a300f1f76212245cdf30b
+    size: 1105
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-doori
+    path: data/raw/kfgqpc/doori/DooriData_v09.json
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/doori/data/DooriData_v09.json
+    sha256: 169b949d6cedd93ddb21728c16057d5ac7faf673ac10e0f213bb5dec1dc90d7d
+    size: 2762955
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-doori-readme
+    path: data/raw/kfgqpc/doori/README.md
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/doori/README.md
+    sha256: 52f97b23cdce234f8c6b64cfdb95a97ed391c1d3428d2a88103b0a86946bfd4a
+    size: 1009
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-soosi
+    path: data/raw/kfgqpc/soosi/SoosiData09.json
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/soosi/data/SoosiData09.json
+    sha256: 81af638398efa88308803c06a961d7019daf2e87e822b8acae24df05a82aa81b
+    size: 2761025
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-soosi-readme
+    path: data/raw/kfgqpc/soosi/README.md
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/soosi/README.md
+    sha256: 2457a57a59b640b47fba8fd36a2ebff36fa8914ea95113586c45eff72037b7e9
+    size: 1164
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-bazzi
+    path: data/raw/kfgqpc/bazzi/BazziData_v07.json
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/bazzi/data/BazziData_v07.json
+    sha256: 2ff11a126e0f15f161b88f83528c0b11d24f69f474baabf02d8864cd93ed15ce
+    size: 2722221
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-bazzi-readme
+    path: data/raw/kfgqpc/bazzi/README.md
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/bazzi/README.md
+    sha256: 21be3af114d7b62fd253dc356d56724222f3e3602d511c2c6d4460233765d3ed
+    size: 1080
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-qumbul
+    path: data/raw/kfgqpc/qumbul/QumbulData_v07.json
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/qumbul/data/QumbulData_v07.json
+    sha256: 3a0377bd943def12711b15cc71a65214fb902a5df70240b87df13c7b516a7888
+    size: 2724022
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
+
+  - id: kfgqpc-qumbul-readme
+    path: data/raw/kfgqpc/qumbul/README.md
+    url: https://raw.githubusercontent.com/ibnhazm/KFGQPC/25f2f8886d6ad0b47190f252d9d7fb1e296f3231/qumbul/README.md
+    sha256: 254109ea00bb5a097ea5ba5510cb3d74177667ec0ad538881a4c17440fffebc5
+    size: 1221
+    license: non déclarée (données du Complexe du Roi Fahd)
+    retrieved: 2026-10-10
