@@ -3,9 +3,8 @@
 import pytest
 
 from quran_harness import __main__ as cli
-from quran_harness import fiche, ingest, readings
+from quran_harness import ingest, readings
 from quran_harness.buckwalter import to_arabic
-from quran_harness.config import load_config
 from quran_harness.readings import EN_MOINS, EN_PLUS, LETTRES, MOTS, VERSET_ABSENT, Token, Variant
 from quran_harness.sources import load_manifest
 
@@ -209,40 +208,6 @@ def test_basmala_of_the_first_sura_missing_from_a_file_is_set_apart(db):
     rows = db.execute("SELECT riwaya FROM variants WHERE kind = ? ORDER BY riwaya", (VERSET_ABSENT,)).fetchall()
     assert [r for (r,) in rows] == ["doori", "qaloon", "soosi", "warsh"]
     assert readings.variants_on_words(db, 1, 4) == []  # not handed to the analysis
-
-
-# --- Bloc D of the fiche ------------------------------------------------------
-
-
-def configured() -> dict:
-    config = load_config()
-    config["reference_form"]["match_level"] = 1
-    config["segmentation"]["pause_level"] = "souple"
-    return config
-
-
-def test_form_untouched_by_the_riwayat(db):
-    card = fiche.build(db, to_arabic("yqdr"), configured(), with_stats=False)[0]
-    block = card.readings
-    assert block.riwayat == tuple(STUDIED)
-    assert (block.on_reference, block.in_segments, block.touched) == ((), (), {})
-    assert "53 sur 53 ont leur association inchangée dans les 7 riwāyāt" in fiche.render(card)
-
-
-def test_form_read_differently_in_some_riwayat(db):
-    card = fiche.build(db, to_arabic("tEmlwn"), configured(), with_stats=False)[0]
-    block = card.readings
-    assert block.on_reference  # some riwayat read يعملون where the base text has تعملون
-    assert all(v.kind == LETTRES and v.ref in card.occurrences for v in block.on_reference)
-    assert set(block.on_reference) <= set(block.in_segments)
-    for companion in card.companions:
-        for riwaya, touched in block.touched.get(companion.key, {}).items():
-            assert riwaya in STUDIED and 1 <= touched <= len(companion.segments)
-    # a companion found only in segments where the form itself is unchanged, and unchanged itself, is not listed
-    changed = {(v.riwaya, w) for v in block.in_segments for w in v.replaced_words}
-    assert changed
-    text = fiche.render(card)
-    assert "### Écarts sur la forme elle-même" in text and "### Associations touchées" in text
 
 
 def test_command_line(built_db, monkeypatch, capsys):

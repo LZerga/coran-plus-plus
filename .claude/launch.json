@@ -6,6 +6,12 @@
       "runtimeExecutable": "C:\\Users\\LOTFI\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\\uv.exe",
       "runtimeArgs": ["run", "python", "-m", "quran_harness", "web", "--port", "8000"],
       "port": 8000
+    },
+    {
+      "name": "interface-web-verification",
+      "runtimeExecutable": "C:\\Users\\LOTFI\\AppData\\Local\\Microsoft\\WinGet\\Packages\\astral-sh.uv_Microsoft.Winget.Source_8wekyb3d8bbwe\\uv.exe",
+      "runtimeArgs": ["run", "python", "-m", "quran_harness", "web", "--port", "8010"],
+      "port": 8010
     }
   ]
 }

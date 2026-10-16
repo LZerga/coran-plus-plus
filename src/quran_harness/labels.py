@@ -127,6 +127,8 @@ LABELS = {
     "pairs_detail": "تفاصيل المقارنات الثنائية والمواضع تظهر مع --detail.",
     # Messages
     "no_occurrence": "لا ورود لهذه الصيغة.",
+    "no_database": "القاعدة غير موجودة : شغل أولا python -m quran_harness build",
+    "empty_query": "اكتب صيغة أو جذرا.",
     "no_root_form": "لا صيغة لهذا الجذر.",
     "no_root": "لا ورود لهذا الجذر.",
     "covers": "الكتابة دون شكل تشمل {n} صيغ، كل واحدة على حدة :",

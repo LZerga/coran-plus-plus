@@ -985,3 +985,19 @@ exemple : `docs/exemple_fiche_yaqdir.md`. L'ancienne fiche reste disponible sous
   colonnes d'une matrice remplies par un seul segment sont masquées et comptées ; `--detail`
   montre tout, avec chaque paire.
 - Pas encore : regroupement des formes proches (D-16) et couleurs (lot H) ; statistique (lot E).
+
+### Interface web branchée sur la nouvelle méthode ; ancien code retiré (2026-10-16)
+- Page en arabe, de droite à gauche (`web/index.html`) ; trois onglets : الجذر (هوية الجذر
+  et boutons des formes, qui ouvrent leur fiche), الصيغة (fiche, découpage, « كل التفاصيل »),
+  المقارنة الثنائية. La page montre exactement ce que la ligne de commande imprime : le même
+  Markdown, converti en HTML (`web/markdown.py`) ; un test le vérifie.
+- **Retiré** avec le code au lemme (règle 4) : `compare.py`, `elements.py`, `fiche.py`,
+  `export.py`, `assistant.py`, et les commandes `fiche-v0`, `comparer`, `comparer-formes`,
+  `resume`, `note`. Fonctions perdues pour l'instant, à reconstruire sur la nouvelle
+  méthode : **export CSV**, **résumé par l'IA** (étape 9, Q19), **bloc D des lectures**
+  dans la fiche (les tables des riwāyāt restent : commandes `lectures`, `variantes`),
+  **comparaison des compagnons de deux formes** (base du niveau 5). L'historique git les garde.
+- `stats.py` garde ses mesures et son contrôle aléatoire ; seul le chargement du corpus
+  (qui lisait les éléments au lemme) est retiré, à refaire sur les cases au lot E.
+- `config.yaml` : sections `reference_form`, `normalization`, `equivalence`, `relations`,
+  `usage_groups`, `assistant` retirées.

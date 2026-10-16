@@ -1,423 +1,219 @@
 <!doctype html>
-<html lang="fr">
+<html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Corrélations coraniques</title>
+<title>Coran++ — قواعد انتظام الجذر في القرآن</title>
 <style>
   :root {
     --bg: #f7f5f0; --panel: #ffffff; --ink: #1f2328; --muted: #5b6470; --line: #d9d4c8;
-    --accent: #1f5f4a; --accent-ink: #ffffff; --mark: #ffe9a8; --ref: #cfe8dd; --extra: #8a8f98;
-    --warn: #8a4b00; --ok: #1f5f4a; --head: #efebe1;
+    --accent: #1f5f4a; --accent-ink: #ffffff; --head: #efebe1; --mark: #fff1c2; --warn: #8a4b00;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #16181b; --panel: #1e2125; --ink: #e6e3dc; --muted: #9aa3ad; --line: #353a41;
-      --accent: #6fc3a5; --accent-ink: #10231c; --mark: #5c4a12; --ref: #1f4a3b; --extra: #7d858f;
-      --warn: #e0a458; --ok: #6fc3a5; --head: #262a2f;
+      --accent: #6fc3a5; --accent-ink: #10231c; --head: #262a2f; --mark: #4a3d12; --warn: #e0a458;
     }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 system-ui, "Segoe UI", sans-serif; }
-  header { padding: 18px 16px 10px; max-width: 1240px; margin: 0 auto; }
-  h1 { font-size: 20px; margin: 0 0 2px; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 17px/1.7 "Amiri", "Scheherazade New", "Traditional Arabic", "Segoe UI", "Tahoma", sans-serif; }
+  header, main { max-width: 1280px; margin: 0 auto; padding: 0 16px; }
+  header { padding-top: 18px; }
+  h1 { font-size: 24px; margin: 0; }
   header p { margin: 0; color: var(--muted); }
-  main { max-width: 1240px; margin: 0 auto; padding: 0 16px 60px; }
-  .tabs { display: flex; gap: 6px; margin: 14px 0 0; }
+  .tabs { display: flex; gap: 6px; margin: 16px 0 0; flex-wrap: wrap; }
   .tabs button { border: 1px solid var(--line); border-bottom: none; background: var(--head); color: var(--ink);
-    padding: 8px 14px; border-radius: 8px 8px 0 0; cursor: pointer; font: inherit; }
-  .tabs button[aria-selected="true"] { background: var(--panel); font-weight: 600; }
-  form { background: var(--panel); border: 1px solid var(--line); border-radius: 0 8px 8px 8px; padding: 14px;
-    display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
-  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
-  input[type=text], select { font: inherit; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px;
-    background: var(--bg); color: var(--ink); min-width: 120px; }
-  input.arabic { font: 22px/1.4 "Amiri", "Scheherazade New", "Traditional Arabic", "Arabic Typesetting", serif; width: 190px; }
+    padding: 8px 16px; border-radius: 8px 8px 0 0; cursor: pointer; font: inherit; }
+  .tabs button[aria-selected="true"] { background: var(--panel); font-weight: 700; }
+  form { background: var(--panel); border: 1px solid var(--line); border-radius: 8px 0 8px 8px; padding: 14px;
+    display: flex; flex-wrap: wrap; gap: 14px; align-items: end; }
+  form[hidden], [hidden] { display: none !important; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 15px; color: var(--muted); }
+  input[type=text], select { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--ink); min-width: 140px; }
+  input.word { font-size: 22px; width: 200px; }
+  input.ref { direction: ltr; text-align: left; width: 150px; }
   label.check { flex-direction: row; align-items: center; gap: 6px; color: var(--ink); padding-bottom: 8px; }
-  button.go { font: inherit; font-weight: 600; padding: 9px 18px; border: none; border-radius: 6px;
+  button.go { font: inherit; font-weight: 700; padding: 8px 20px; border: none; border-radius: 6px;
     background: var(--accent); color: var(--accent-ink); cursor: pointer; }
   button.go:disabled { opacity: .6; cursor: progress; }
+  .tools { margin-inline-start: auto; }
+  .tools button { font: inherit; font-size: 15px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 6px;
+    background: var(--bg); color: var(--ink); cursor: pointer; }
   .message { margin: 16px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
   .message.error { border-color: var(--warn); color: var(--warn); }
-  section.fiche { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px; margin-top: 18px; }
-  h2 { font-size: 19px; margin: 0 0 4px; }
-  h3 { font-size: 16px; margin: 26px 0 8px; padding-top: 14px; border-top: 1px solid var(--line); }
-  h4 { font-size: 14px; margin: 18px 0 6px; color: var(--muted); font-weight: 600; }
-  .params { color: var(--muted); font-size: 13px; margin: 0 0 6px; }
-  .facts { margin: 6px 0; padding-left: 18px; }
-  .note { color: var(--muted); font-size: 13px; margin: 6px 0; }
-  .tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
-  .tools a, .tools button { font: inherit; font-size: 13px; padding: 5px 10px; border: 1px solid var(--line); border-radius: 6px;
-    background: var(--bg); color: var(--ink); text-decoration: none; cursor: pointer; }
-  .scroll { overflow-x: auto; }
-  table { border-collapse: collapse; width: 100%; font-size: 14px; }
-  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
-  th { background: var(--head); font-weight: 600; white-space: nowrap; }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-  tr.row { cursor: pointer; }
-  tr.row:hover td { background: var(--head); }
-  tr.row td:first-child { position: relative; padding-left: 24px; white-space: nowrap; }
-  tr.row td:first-child::before { content: "▸"; position: absolute; left: 7px; top: 8px; color: var(--muted); }
-  tr.row.open td:first-child::before { content: "▾"; }
-  tr.detail td { background: var(--bg); padding: 10px 12px; }
-  .ar { font: 24px/1.9 "Amiri", "Scheherazade New", "Traditional Arabic", "Arabic Typesetting", serif; direction: rtl; unicode-bidi: isolate; }
-  h2 .ar { font-size: 30px; line-height: 1.3; }
-  td .ar { display: inline-block; }
-  .line { display: flex; gap: 12px; align-items: baseline; margin: 2px 0; }
-  .line .where { color: var(--muted); font-size: 12px; white-space: nowrap; min-width: 96px; font-variant-numeric: tabular-nums; }
-  .w { padding: 0 2px; border-radius: 3px; }
-  .w.ref { background: var(--ref); font-weight: 700; }
-  .w.hit { background: var(--mark); }
-  .w.extra { color: var(--extra); }
-  .w.block { border-bottom: 2px solid var(--accent); }
-  .w.common { border-bottom: 2px dotted var(--accent); }
-  .tag { display: inline-block; font-size: 12px; padding: 1px 7px; border-radius: 10px; border: 1px solid var(--line); white-space: nowrap; }
-  .tag.above { color: var(--ok); border-color: var(--ok); }
-  .tag.freq, .tag.rare { color: var(--muted); }
-  .tag.kind-calc { color: var(--ok); border-color: var(--ok); }
-  .tag.kind-src { color: var(--muted); }
-  .tag.kind-note { color: var(--warn); border-color: var(--warn); }
-  .ar-inline { font: 1.3em/1.2 "Amiri", "Scheherazade New", "Traditional Arabic", "Arabic Typesetting", serif; }
-  form label, form select, form input[type=text] { max-width: 100%; }
-  ul.summary { list-style: none; padding-left: 0; }
-  ul.summary li { margin: 5px 0; }
-  .wordrefs { display: flex; flex-wrap: wrap; gap: 6px 14px; direction: rtl; }
-  .wordrefs span { display: inline-flex; flex-direction: column; align-items: center; }
-  .wordrefs small { color: var(--muted); font: 11px system-ui, sans-serif; direction: ltr; }
-  .hidden { display: none; }
+  .forms { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+  .forms button { font: inherit; font-size: 19px; padding: 4px 12px; border: 1px solid var(--line); border-radius: 18px;
+    background: var(--panel); color: var(--ink); cursor: pointer; }
+  .forms button small { color: var(--muted); font-size: 13px; margin-inline-start: 6px; }
+  .forms button:hover { border-color: var(--accent); }
+  article { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 18px 18px; margin-top: 18px; }
+  article h2 { font-size: 24px; margin: 14px 0 4px; }
+  article h3 { font-size: 20px; margin: 26px 0 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+  article h4 { font-size: 17px; margin: 18px 0 6px; color: var(--muted); }
+  article p, article li { margin: 4px 0; }
+  article ul { padding-inline-start: 22px; }
+  article code { font-size: 19px; background: var(--head); padding: 1px 6px; border-radius: 4px; }
+  article strong { background: var(--mark); padding: 0 3px; border-radius: 3px; }
+  .scroll { overflow-x: auto; margin: 8px 0; }
+  table { border-collapse: collapse; font-size: 17px; }
+  th, td { text-align: right; padding: 5px 9px; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
+  th { background: var(--head); font-weight: 700; position: sticky; top: 0; }
+  td:last-child { white-space: normal; }
+  footer { color: var(--muted); font-size: 14px; margin: 26px 0 40px; }
   @media print {
-    header p, .tabs, form, .tools, .message { display: none; }
+    .tabs, form, footer { display: none; }
+    article { border: none; padding: 0; }
     body { background: #fff; color: #000; }
-    section.fiche { border: none; padding: 0; }
-    tr.detail.hidden { display: none; }
-    tr.row td:first-child { padding-left: 8px; }
-    tr.row td:first-child::before { content: ""; }
   }
 </style>
 </head>
 <body>
 <header>
-  <h1>Corrélations coraniques</h1>
-  <p>Le programme décrit ce qu'il observe dans le texte. Il n'interprète pas.</p>
+  <h1><span dir="ltr">Coran++</span></h1>
+  <p>قواعد انتظام الجذر في القرآن — وصف دون تأويل</p>
 </header>
 <main>
   <div class="tabs" role="tablist">
-    <button id="tab-fiche" role="tab" aria-selected="true">Fiche</button>
-    <button id="tab-comparer" role="tab" aria-selected="false">Comparer deux formes ou deux racines</button>
+    <button role="tab" data-tab="racine" aria-selected="true">الجذر</button>
+    <button role="tab" data-tab="fiche" aria-selected="false">الصيغة</button>
+    <button role="tab" data-tab="paire" aria-selected="false">المقارنة الثنائية</button>
   </div>
-  <form id="query">
-    <label>Chercher<select id="mode"><option value="forme">une forme</option><option value="racine">une racine</option></select></label>
-    <label id="label-a"><span id="caption-a">Forme</span><input id="a" class="arabic" type="text" dir="rtl" lang="ar" autocomplete="off"></label>
-    <label id="label-b" class="hidden"><span id="caption-b">Seconde forme</span><input id="b" class="arabic" type="text" dir="rtl" lang="ar" autocomplete="off"></label>
-    <label>Ce qu'on appelle « la même forme »<select id="niveau"></select></label>
-    <label>Découpage en segments<select id="pause"></select></label>
-    <label>Lecture<select id="lecture"></select></label>
-    <label class="check" id="label-stats"><input id="stats" type="checkbox"> Contrôle aléatoire (≈ 30 s)</label>
-    <button class="go" id="go" type="submit">Afficher</button>
+
+  <form id="form-racine" data-tab="racine">
+    <label>الجذر <input class="word" type="text" name="q" value="قدر" required></label>
+    <button class="go" type="submit">عرض هوية الجذر</button>
+    <span class="tools"><button type="button" class="print">طباعة / PDF</button></span>
   </form>
-  <div id="status"></div>
-  <div id="result"></div>
+
+  <form id="form-fiche" data-tab="fiche" hidden>
+    <label>الصيغة <input class="word" type="text" name="q" value="يقدر" required></label>
+    <label>التقطيع <select name="pause"></select></label>
+    <label class="check"><input type="checkbox" name="detail"> كل التفاصيل</label>
+    <button class="go" type="submit">عرض البطاقة</button>
+    <span class="tools"><button type="button" class="print">طباعة / PDF</button></span>
+  </form>
+
+  <form id="form-paire" data-tab="paire" hidden>
+    <label>المقطع أ <input class="ref" type="text" name="a" value="34:36:1-8" required></label>
+    <label>المقطع ب <input class="ref" type="text" name="b" value="17:30:1-7" required></label>
+    <label>الصيغة المرجعية <input class="word" type="text" name="pivot" value="يقدر" required></label>
+    <button class="go" type="submit">قارن</button>
+    <span class="tools"><button type="button" class="print">طباعة / PDF</button></span>
+  </form>
+
+  <div id="notice"></div>
+  <div id="forms" class="forms"></div>
+  <article id="result" hidden></article>
+  <footer id="footer"></footer>
 </main>
 <script>
-"use strict";
-const $ = (id) => document.getElementById(id);
-const PAUSES = { strict: "pauses strictes", souple: "toutes les pauses", verset: "verset entier" };
-let comparing = false;
+const $ = (selector, root = document) => root.querySelector(selector);
+const forms = { racine: $("#form-racine"), fiche: $("#form-fiche"), paire: $("#form-paire") };
 
-function el(tag, attrs, ...children) {
-  const node = document.createElement(tag);
-  for (const [key, value] of Object.entries(attrs || {})) {
-    if (key === "class") node.className = value;
-    else if (key === "text") node.textContent = value;
-    else node.setAttribute(key, value);
+function show(tab) {
+  for (const button of document.querySelectorAll(".tabs button")) {
+    button.setAttribute("aria-selected", String(button.dataset.tab === tab));
   }
-  for (const child of children.flat(Infinity)) {
-    if (child === null || child === undefined) continue;
-    node.append(child instanceof Node ? child : document.createTextNode(String(child)));
-  }
-  return node;
-}
-const ar = (text, cls) => el("span", { class: "ar" + (cls ? " " + cls : ""), lang: "ar" }, text || "—");
-const num = (value) => el("td", { class: "num" }, value);
-const fr = (value, digits) => Number(value).toLocaleString("fr-FR", { maximumFractionDigits: digits, minimumFractionDigits: digits });
-
-function table(headers, rows) {
-  const head = el("tr", {}, headers.map((h) => el("th", { class: h.num ? "num" : "" }, h.label || h)));
-  const body = el("tbody");
-  for (const row of rows) {
-    const tr = el("tr", { class: row.detail ? "row" : "plain" }, row.cells.map((c) => (c instanceof HTMLTableCellElement ? c : el("td", {}, c))));
-    body.append(tr);
-    if (row.detail) {
-      const detail = el("tr", { class: "detail hidden" }, el("td", { colspan: headers.length }));
-      tr.addEventListener("click", () => {
-        if (!detail.firstChild.hasChildNodes()) detail.firstChild.append(row.detail());
-        detail.classList.toggle("hidden");
-        tr.classList.toggle("open");
-      });
-      body.append(detail);
-    }
-  }
-  return el("div", { class: "scroll" }, el("table", {}, el("thead", {}, head), body));
+  for (const [name, form] of Object.entries(forms)) form.hidden = name !== tab;
 }
 
-// A segment as Arabic text; `classes(word, index)` says how to mark each word.
-function segmentText(segment, classes) {
-  const span = el("span", { class: "ar", lang: "ar" });
-  segment.words.forEach((word, index) => {
-    span.append(el("span", { class: "w " + (classes ? classes(word, index) : word.reference ? "ref" : "") }, word.text), " ");
-  });
-  return span;
-}
-const line = (where, node) => el("div", { class: "line" }, el("span", { class: "where" }, where), node);
-
-function readingTag(text) {
-  const cls = text.startsWith("au-dessus") ? "above" : text.startsWith("attendu") ? "freq" : "rare";
-  return el("span", { class: "tag " + cls }, text);
+function notice(text, error = false) {
+  $("#notice").innerHTML = text ? `<div class="message${error ? " error" : ""}"></div>` : "";
+  if (text) $("#notice .message").textContent = text;
 }
 
-function csvLink(label, table, index) {
-  const p = params();
-  p.set("table", table);
-  p.set("index", index);
-  return el("a", { href: "/api/fiche.csv?" + p.toString() }, "CSV : " + label);
-}
-
-// A French sentence holding Arabic words: each Arabic stretch is isolated, so that the
-// numbers and the punctuation around it stay where the sentence puts them.
-function mixed(text) {
-  return text.split(/([؀-ۿ]+(?:\s+[؀-ۿ]+)*)/).map((part, i) => (i % 2 ? el("bdi", { class: "ar-inline", lang: "ar" }, part) : part));
-}
-
-// Every line of a summary says where it comes from: computed, quoted from a source, or a human note.
-function renderSummary(box, summary, index) {
-  const lineOf = (s) => el("li", {}, el("span", { class: "tag kind-" + (s.kind === "calculé" ? "calc" : s.kind === "note humaine" ? "note" : "src") },
-    `${s.kind} · ${s.basis.join(", ")}`), " ", el("span", {}, mixed(s.text)));
-  box.replaceChildren(el("p", { class: "note" }, `Rédaction : ${summary.engine}. Chaque ligne dit d'où elle vient.`));
-  if (summary.notice) box.append(el("p", { class: "message error" }, `Modèle non utilisé : ${summary.notice}. Le résumé reprend les faits tels quels.`));
-  box.append(el("ul", { class: "facts summary" }, summary.statements.map(lineOf)));
-  box.append(el("h4", {}, "Formes à comparer"));
-  box.append(summary.suggestions.length ? el("ul", { class: "facts summary" }, summary.suggestions.map(lineOf)) : el("p", { class: "note" }, "Aucune autre forme pour cette racine."));
-  if (summary.rejected.length) {
-    box.append(el("h4", {}, `Phrases du modèle écartées par la vérification (${summary.rejected.length})`));
-    box.append(el("ul", { class: "facts" }, summary.rejected.map((r) => el("li", {}, mixed(`${r.reason} : « ${r.text} »`)))));
-  }
-  const button = el("button", { type: "button" }, "Reformuler avec un modèle");
-  const hint = el("span", { class: "note" }, " Envoie les faits ci-dessus à l'API Anthropic ; chaque phrase rendue est vérifiée contre eux.");
-  button.addEventListener("click", async () => {
-    button.disabled = true;
-    button.textContent = "Reformulation en cours…";
-    try {
-      const p = params();
-      p.set("index", index);
-      p.set("ia", "true");
-      const response = await fetch("/api/resume?" + p.toString());
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || response.statusText);
-      renderSummary(box, data, index);
-    } catch (error) {
-      button.disabled = false;
-      button.textContent = "Reformuler avec un modèle";
-      hint.textContent = " " + String(error.message || error);
-    }
-  });
-  box.append(el("div", { class: "tools" }, button, hint));
-}
-
-function renderFiche(fiche, index) {
-  const segments = new Map(fiche.segments.map((s) => [s.ref, s]));
-  const box = el("section", { class: "fiche" });
-  const title = el("h2", {}, fiche.form.startsWith("racine") ? "Racine " : "Forme ", ar(fiche.form.replace(/^racine /, "")),
-    " · lemme ", ar(fiche.lemma), " · racine ", ar(fiche.root));
-  box.append(title, el("p", { class: "params" }, Object.entries(fiche.parameters).map(([k, v]) => `${k} : ${v}`).join(" · ")));
-  box.append(el("div", { class: "tools" }, csvLink("segments", "segments", index), csvLink("compagnons", "compagnons", index),
-    csvLink("comparaisons", "paires", index), csvLink("lectures", "lectures", index),
-    el("button", { type: "button", onclick: "window.print()" }, "Imprimer / PDF")));
-
-  // Summary (step 9)
-  const summaryBox = el("div", {});
-  box.append(el("h3", {}, "Résumé"), summaryBox);
-  renderSummary(summaryBox, fiche.summary, index);
-
-  // A
-  box.append(el("h3", {}, "A. Carte d'identité"));
-  const positions = Object.entries(fiche.positions).map(([k, v]) => `${k} ${v}`).join(", ");
-  const writings = el("li", {}, "Graphies : ");
-  fiche.writings.forEach(([text, count], i) => writings.append(i ? ", " : "", ar(text), ` (${count})`));
-  box.append(el("ul", { class: "facts" },
-    el("li", {}, `${fiche.occurrences.length} occurrences, dans ${fiche.ayas} versets et ${fiche.segments.length} segments`),
-    writings, el("li", {}, "Position dans le segment : " + positions)));
-  box.append(table(["Segment", "Position", { label: "Mots", num: true }, "Texte"], fiche.segments.map((s) => ({
-    cells: [s.ref, s.position, num(s.words.length), segmentText(s)],
-    detail: () => el("div", { class: "wordrefs ar" }, s.words.map((w) => el("span", {}, el("span", { class: "w" + (w.reference ? " ref" : "") }, w.text), el("small", {}, w.ref)))),
-  }))));
-
-  // B
-  box.append(el("h3", {}, "B. Compagnons"));
-  const st = fiche.statistics;
-  if (st) {
-    box.append(el("p", { class: "note" }, `Contrôle aléatoire : les mots sont mélangés entre les segments, qui gardent leur taille (${st.controls.join(", ")} ; ${st.permutations} permutations ; graine ${st.seed}). « Attendu » est le nombre moyen de segments communs après mélange ; p corrigée tient compte des ${fiche.companions.length} compagnons testés. Seuil : ${st.alpha}.`));
-  } else {
-    box.append(el("p", { class: "note" }, "Sans contrôle aléatoire, les nombres ci-dessous sont de simples comptages : rien ne dit qu'ils dépassent le hasard. Cochez « Contrôle aléatoire » pour le savoir."));
-  }
-  const families = [["a", "a. Formes de la même racine", true], ["b", "b. Formes d'autres racines", true], ["c", "c. Lettres et pronoms", false]];
-  for (const [kind, label, withRoot] of families) {
-    const list = fiche.companions.filter((c) => c.kind === kind);
-    box.append(el("h4", {}, `${label} (${list.length})`));
-    if (!list.length) { box.append(el("p", { class: "note" }, "Aucun.")); continue; }
-    const headers = ["Forme", "Lemme", withRoot ? "Racine" : "Nature", { label: "Occ.", num: true }, { label: "Segments", num: true },
-      { label: "Avant", num: true }, { label: "Après", num: true }];
-    if (st) {
-      headers.push({ label: "Dans le texte", num: true }, { label: "PMI", num: true }, { label: "G²", num: true });
-      st.controls.forEach((c) => headers.push({ label: `Attendu / p corrigée (${c})`, num: true }));
-      headers.push("Lecture");
-    }
-    box.append(table(headers, list.map((c) => {
-      const cells = [ar(c.form), ar(c.lemma), withRoot ? ar(c.root) : c.nature, num(c.occurrences), num(c.segments), num(c.before), num(c.after)];
-      if (st && c.stats) {
-        cells.push(num(c.stats.n_y), num(fr(c.stats.pmi, 2)), num(fr(c.stats.log_likelihood, 1)));
-        st.controls.forEach((name) => { const k = c.stats.controls[name]; cells.push(num(`${fr(k.expected, 2)} / ${fr(k.q, 3)}`)); });
-        cells.push(readingTag(c.stats.reading));
-      }
-      const hits = new Set(c.refs);
-      return { cells, detail: () => el("div", {}, c.segment_refs.map((ref) => line(ref,
-        segmentText(segments.get(ref), (w) => (w.reference ? "ref" : hits.has(w.ref) ? "hit" : ""))))) };
-    })));
-  }
-  box.append(el("h4", {}, "Collés à la forme"));
-  box.append(fiche.attached.length ? table(["Élément", "Étiquette", { label: "Occurrences", num: true }], fiche.attached.map((a) => ({
-    cells: [ar(a.form), a.tag, num(a.refs.length)], detail: () => el("div", { class: "note" }, a.refs.join(", ")) })))
-    : el("p", { class: "note" }, "Aucun."));
-
-  // Comparisons
-  box.append(el("h3", {}, "Comparaison des segments deux à deux"));
-  const pairs = fiche.pairs;
-  if (pairs.skipped) box.append(el("p", { class: "note" }, `Non calculée : ${pairs.skipped} paires, au-delà de la limite fixée dans config.yaml.`));
-  else if (!pairs.total) box.append(el("p", { class: "note" }, "Un seul segment : rien à comparer."));
-  else {
-    box.append(el("p", {}, `${pairs.total} paires : ` + pairs.counts.map((c) => `${c.label} ${c.count}`).join(", ")));
-    if (pairs.rows.length < pairs.total) box.append(el("p", { class: "note" }, `Les ${pairs.rows.length} premières sont affichées ; l'export CSV les contient toutes.`));
-    const roleClass = (role) => (role.startsWith("bloc") ? "block" : role.startsWith("commun") ? "common" : "extra");
-    box.append(table(["A", "B", "Relation", "Blocs identiques", "Ordre"], pairs.rows.map((p) => ({
-      cells: [p.a, p.b, el("span", { class: "ar" }, p.relation_label), el("span", {}, p.blocks.length ? p.blocks.map((b, i) => [i ? " | " : "", ar(b)]) : "—"),
-        p.same_order ? "même ordre" : "ordre différent"],
-      detail: () => el("div", {},
-        line("A " + p.a, segmentText(segments.get(p.a), (w, i) => roleClass(p.a_roles[i]))),
-        line("B " + p.b, segmentText(segments.get(p.b), (w, i) => roleClass(p.b_roles[i]))),
-        el("p", { class: "note" }, "Souligné plein : bloc identique. Souligné pointillé : mot commun hors bloc. Gris : mot sans équivalent."),
-        p.common.length ? el("div", {}, p.common.map((c) => el("div", {}, ar(c.a), " ~ ", ar(c.b), ` (${c.level})`))) : null),
-    }))));
-  }
-
-  // C
-  if (fiche.groups.length) {
-    box.append(el("h3", {}, "C. Usages regroupés par ressemblance"));
-    box.append(el("p", { class: "note" }, "Deux segments sont dans le même groupe quand une identité, totale ou partielle, les relie, directement ou par l'intermédiaire d'autres segments du groupe."));
-    box.append(table(["Groupe", { label: "Segments", num: true }, "Bloc identique le plus partagé", "Paires qui le portent"], fiche.groups.map((g, i) => ({
-      cells: [String(i + 1), num(g.members.length), g.shared_block ? ar(g.shared_block) : "—", g.pairs ? `${g.shared_in} sur ${g.pairs}` : "—"],
-      detail: () => el("div", {}, g.members.map((ref) => line(ref, segmentText(segments.get(ref))))),
-    }))));
-  }
-
-  // D
-  const r = fiche.readings;
-  if (r) {
-    box.append(el("h3", {}, "D. Selon les lectures"));
-    box.append(el("p", { class: "note" }, `Texte de base (Hafs) comparé à ${r.riwayat.length} autres riwāyāt : ${r.riwayat.join(", ")}. Seuls les écarts de lettres et de mots sont relevés ; les écarts de voyelles et de prononciation ne le sont pas.`));
-    box.append(el("ul", { class: "facts" },
-      el("li", {}, `Forme : ${r.on_reference.length} écart(s) sur ses occurrences.`),
-      el("li", {}, `Compagnons : ${r.companions_unchanged} sur ${fiche.companions.length} ont leur association inchangée dans les ${r.riwayat.length} riwāyāt.`)));
-    const variants = (list) => table(["Riwāya", "Mot", "Nature", "Texte de base", "Texte de la riwāya"],
-      list.map((v) => ({ cells: [v.riwaya, v.ref, v.kind, ar(v.base_text), ar(v.variant_text)] })));
-    if (r.on_reference.length) box.append(el("h4", {}, "Écarts sur la forme elle-même"), variants(r.on_reference));
-    if (r.touched.length) {
-      box.append(el("h4", {}, "Associations touchées"));
-      box.append(table(["Compagnon", "Lemme", { label: "Segments communs", num: true }, "Riwāyāt où l'association est inchangée", "Segments touchés, par riwāya"],
-        r.touched.map((t) => ({ cells: [ar(t.form), ar(t.lemma), num(t.segments), `${t.unchanged} sur ${r.riwayat.length}`,
-          Object.entries(t.per_riwaya).map(([k, v]) => `${k} ${v}`).join(", ")] }))));
-    }
-    box.append(el("h4", {}, `Tous les écarts dans les segments (${r.in_segments.length})`));
-    box.append(r.in_segments.length ? variants(r.in_segments) : el("p", { class: "note" }, "Aucun."));
-  }
-  return box;
-}
-
-function renderComparison(data) {
-  const box = el("section", { class: "fiche" });
-  box.append(el("h2", {}, "Compagnons de ", ar(data.first.form.replace(/^racine /, "")), " et de ", ar(data.second.form.replace(/^racine /, ""))));
-  box.append(el("p", { class: "params" }, Object.entries(data.parameters).map(([k, v]) => `${k} : ${v}`).join(" · ")));
-  data.notes.forEach((note) => box.append(el("p", { class: "note" }, note)));
-  const p = params();
-  box.append(el("div", { class: "tools" }, el("a", { href: "/api/comparer.csv?" + p.toString() }, "CSV : compagnons"),
-    el("button", { type: "button", onclick: "window.print()" }, "Imprimer / PDF")));
-  const side = (s) => el("li", {}, ar(s.form.replace(/^racine /, "")), ` (${s.lemma}) : ${s.occurrences} occurrences, ${s.segments} segments, ${s.companions} compagnons`);
-  box.append(el("ul", { class: "facts" }, side(data.first), side(data.second),
-    el("li", {}, Object.entries(data.counts).map(([k, v]) => `${k} : ${v}`).join(" · "))));
-  box.append(table(["Catégorie", "Chez", "Compagnon", "Lemme", "Racine", { label: "Segments (1)", num: true }, { label: "Segments (2)", num: true }, "Formes de la même racine chez l'autre"],
-    data.rows.map((row) => ({ cells: [row.category, row.side === "les deux" ? row.side : ar(row.side.replace(/^racine /, "")), ar(row.form), ar(row.lemma), ar(row.root),
-      num(row.segments_first), num(row.segments_second), row.other_forms.length ? ar(row.other_forms.join("، ")) : "—"] }))));
-  return box;
-}
-
-function params() {
-  const p = new URLSearchParams({ mode: $("mode").value, niveau: $("niveau").value, pause: $("pause").value, lecture: $("lecture").value });
-  if (comparing) { p.set("a", $("a").value); p.set("b", $("b").value); }
-  else { p.set("q", $("a").value); if ($("stats").checked) p.set("stats", "true"); }
-  return p;
-}
-
-function setTab(compare) {
-  comparing = compare;
-  $("tab-fiche").setAttribute("aria-selected", String(!compare));
-  $("tab-comparer").setAttribute("aria-selected", String(compare));
-  $("label-b").classList.toggle("hidden", !compare);
-  $("label-stats").classList.toggle("hidden", compare);
-  setCaptions();
-  $("result").replaceChildren();
-  $("status").replaceChildren();
-}
-function setCaptions() {
-  const root = $("mode").value === "racine";
-  $("caption-a").textContent = comparing ? (root ? "Première racine" : "Première forme") : root ? "Racine" : "Forme";
-  $("caption-b").textContent = root ? "Seconde racine" : "Seconde forme";
-}
-
-async function run(event) {
-  event.preventDefault();
-  const status = $("status"), result = $("result"), button = $("go");
-  result.replaceChildren();
-  const slow = !comparing && $("stats").checked;
-  status.replaceChildren(el("div", { class: "message" }, slow ? "Calcul en cours, contrôle aléatoire compris : environ 30 secondes…" : "Calcul en cours…"));
+async function ask(path, params, button) {
+  notice("");
   button.disabled = true;
   try {
-    const response = await fetch((comparing ? "/api/comparer?" : "/api/fiche?") + params().toString());
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.detail || response.statusText);
-    status.replaceChildren();
-    if (comparing) result.append(renderComparison(data));
-    else {
-      if (data.fiches.length > 1) status.append(el("div", { class: "message" }, `${data.fiches.length} mots différents s'écrivent ainsi : une fiche par lemme, sans les fusionner.`));
-      data.fiches.forEach((fiche, index) => result.append(renderFiche(fiche, index)));
-    }
+    const response = await fetch(path + "?" + new URLSearchParams(params));
+    const body = await response.json();
+    if (!response.ok) throw new Error(typeof body.detail === "string" ? body.detail : JSON.stringify(body.detail));
+    return body;
   } catch (error) {
-    status.replaceChildren(el("div", { class: "message error" }, String(error.message || error)));
+    notice(error.message, true);
+    return null;
   } finally {
     button.disabled = false;
   }
 }
 
-async function init() {
-  const meta = await (await fetch("/api/meta")).json();
-  meta.niveaux.forEach((n) => $("niveau").append(el("option", { value: n.id }, n.label)));
-  meta.pauses.forEach((p) => $("pause").append(el("option", { value: p }, PAUSES[p] || p)));
-  meta.lectures.forEach((l) => $("lecture").append(el("option", { value: l }, l)));
-  $("niveau").value = meta.defaults.niveau;
-  $("pause").value = meta.defaults.pause;
-  $("tab-fiche").addEventListener("click", () => setTab(false));
-  $("tab-comparer").addEventListener("click", () => setTab(true));
-  $("mode").addEventListener("change", setCaptions);
-  $("query").addEventListener("submit", run);
+function display(html) {
+  const result = $("#result");
+  result.innerHTML = html;
+  result.hidden = false;
 }
-init();
+
+function formButtons(items, title) {
+  const box = $("#forms");
+  box.innerHTML = "";
+  if (!items.length) return;
+  const label = document.createElement("span");
+  label.textContent = title;
+  box.append(label);
+  for (const item of items) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = item.form;
+    const count = document.createElement("small");
+    count.textContent = item.occurrences;
+    button.append(count);
+    button.addEventListener("click", () => openSheet(item.form));
+    box.append(button);
+  }
+}
+
+async function openSheet(form) {
+  show("fiche");
+  forms.fiche.q.value = form;
+  forms.fiche.requestSubmit();
+}
+
+forms.racine.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const body = await ask("/api/racine", { q: forms.racine.q.value }, $("button.go", forms.racine));
+  if (!body) return;
+  display(body.html);
+  formButtons(body.forms, "صيغ الجذر في القرآن (اضغط لفتح البطاقة) :");
+});
+
+forms.fiche.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const f = forms.fiche;
+  const body = await ask("/api/fiche", { q: f.q.value, pause: f.pause.value, detail: f.detail.checked },
+                         $("button.go", f));
+  if (!body) return;
+  display(body.html);
+  const others = body.candidates.filter((c) => c.form !== body.form);
+  formButtons(others, others.length ? "الكتابة تشمل صيغا أخرى أيضا :" : "");
+});
+
+forms.paire.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const f = forms.paire;
+  const body = await ask("/api/paire", { a: f.a.value, b: f.b.value, pivot: f.pivot.value }, $("button.go", f));
+  if (!body) return;
+  $("#forms").innerHTML = "";
+  display(body.html);
+});
+
+for (const button of document.querySelectorAll(".tabs button")) {
+  button.addEventListener("click", () => show(button.dataset.tab));
+}
+for (const button of document.querySelectorAll("button.print")) {
+  button.addEventListener("click", () => window.print());
+}
+
+fetch("/api/meta").then((r) => r.json()).then((meta) => {
+  const select = forms.fiche.pause;
+  for (const pause of meta.pauses) {
+    const option = new Option(pause.label, pause.id, false, pause.id === meta.default_pause);
+    select.add(option);
+  }
+  $("#footer").textContent = `⁦Coran++⁩ · نسخة البرنامج ${meta.version} · الرواية : حفص · البرنامج يصف ولا يؤول`;
+});
 </script>
 </body>
 </html>

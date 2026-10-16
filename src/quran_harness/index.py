@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections import Counter
-from dataclasses import dataclass
 from pathlib import Path
 from typing import NamedTuple
 
@@ -25,7 +24,6 @@ from .ingest import DB_PATH, _verified
 from .normalize import Level, normalize
 from .sources import load_manifest
 
-LEVELS = {"written": "w.text_norm2", "core": "f.core_norm2", "bare": "f.bare_norm2"}
 ALEF_WASLA, ALEF = "ٱ", "ا"
 
 SCHEMA = """
@@ -52,9 +50,9 @@ CREATE INDEX word_forms_by_bare ON word_forms (bare_norm2);
 
 -- One row per word and per root it carries (a word with two stems may carry two).
 CREATE VIEW root_index AS
-SELECT s.root, s.lemma, w.id AS word_id, w.ref, w.sura, w.aya, w.text_raw,
+SELECT s.root, w.id AS word_id, w.ref, w.sura, w.aya, w.text_raw,
        w.text_norm2 AS written, f.core_norm2 AS core, f.bare_norm2 AS bare
-FROM (SELECT DISTINCT word_id, root, lemma FROM word_segments
+FROM (SELECT DISTINCT word_id, root FROM word_segments
       WHERE kind = 'stem' AND root IS NOT NULL) s
 JOIN words w ON w.id = s.word_id
 JOIN word_forms f ON f.word_id = w.id
@@ -184,19 +182,11 @@ def build(db_path: Path = DB_PATH) -> dict[str, int]:
         )
         connection.commit()
         kinds = Counter(kind for _, kind, _, _ in differences)
-        roots, lemmas = connection.execute("SELECT count(DISTINCT root), count(DISTINCT lemma) FROM root_index").fetchone()
-        distinct = {
-            level: connection.execute(f"SELECT count(*) FROM (SELECT DISTINCT lemma, {level} FROM root_index)").fetchone()[0]
-            for level in LEVELS
-        }
+        roots = connection.execute("SELECT count(DISTINCT root) FROM root_index").fetchone()[0]
     finally:
         connection.close()
     return {
         "racines": roots,
-        "lemmes portant une racine": lemmas,
-        "formes distinctes, mot écrit": distinct["written"],
-        "formes distinctes, sans clitiques": distinct["core"],
-        "formes distinctes, sans clitiques ni article": distinct["bare"],
         "racines ajoutées par la version corrigée": kinds["added"],
         "racines retirées par la version corrigée": kinds["removed"],
         "racines changées par la version corrigée": kinds["changed"],
@@ -209,74 +199,6 @@ def build(db_path: Path = DB_PATH) -> dict[str, int]:
 # --- Queries ------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class FormCount:
-    lemma: str
-    form: str
-    occurrences: int
-    ayas: int
-
-
-@dataclass(frozen=True)
-class Occurrence:
-    root: str
-    lemma: str
-    ref: str
-    text: str
-
-
 def search_key(text: str) -> str:
     """What a typed form is matched on: no vowels, alef wasla typed as a plain alef."""
     return normalize(text, Level.NO_VOWELS).replace(ALEF_WASLA, ALEF)
-
-
-def _column(level: str) -> str:
-    if level not in LEVELS:
-        raise ValueError(f"niveau inconnu : {level!r} (attendu : {', '.join(LEVELS)})")
-    return level
-
-
-def forms_of_root(connection: sqlite3.Connection, root: str, level: str) -> list[FormCount]:
-    """Forms attested for a root, by lemma, with their numbers of occurrences and of ayas."""
-    column = _column(level)
-    rows = connection.execute(
-        f"""SELECT lemma, {column}, count(*), count(DISTINCT sura || ':' || aya)
-            FROM root_index WHERE root = ? GROUP BY lemma, {column}
-            ORDER BY lemma, count(*) DESC, {column}""",
-        (alt_roots.fold_hamza(root),),
-    )
-    return [FormCount(*row) for row in rows]
-
-
-def occurrences_of_form(connection: sqlite3.Connection, form: str, level: str) -> list[Occurrence]:
-    """Every word that is the given form at the given level, in text order."""
-    column = _column(level)
-    rows = connection.execute(
-        f"""SELECT root, lemma, ref, text_raw FROM root_index
-            WHERE replace({column}, ?, ?) = ? ORDER BY word_id""",
-        (ALEF_WASLA, ALEF, search_key(form)),
-    )
-    return [Occurrence(*row) for row in rows]
-
-
-def occurrences_of_root(connection: sqlite3.Connection, root: str) -> list[Occurrence]:
-    """Every word carrying the root, in text order, each word once."""
-    rows = connection.execute(
-        "SELECT root, lemma, ref, text_raw FROM root_index WHERE root = ? ORDER BY word_id",
-        (alt_roots.fold_hamza(search_key(root)),),
-    )
-    found: dict[str, Occurrence] = {}
-    for row in rows:
-        found.setdefault(row[2], Occurrence(*row))
-    return list(found.values())
-
-
-def unrooted_occurrences(connection: sqlite3.Connection, form: str, level: str) -> tuple[int, int]:
-    """Words matching the form that the root index cannot hold: (without root, in a sura-opening basmala)."""
-    column = LEVELS[_column(level)]
-    query = f"""SELECT count(*) FROM words w JOIN word_forms f ON f.word_id = w.id
-                WHERE replace({column}, ?, ?) = ? AND """
-    args = (ALEF_WASLA, ALEF, search_key(form))
-    no_root = connection.execute(query + "w.aya > 0 AND w.root IS NULL", args).fetchone()[0]
-    basmala = connection.execute(query + "w.aya = 0", args).fetchone()[0]
-    return no_root, basmala

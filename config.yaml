@@ -40,28 +40,7 @@ families:               # niveau 2 : familles tracées par la typologie (SPEC §
 matrix:                 # niveau 3 : matrices d'alignement (SPEC §2.5)
   relative_min: 0.75    # colonne « relativement fixe » : même forme dans cette part des lignes   (D-09)
 
-# Les sections reference_form, normalization, equivalence, relations et usage_groups
-# viennent de la spécification v0. Elles servent encore à l'ancienne fiche et seront
-# remplacées au lot D (docs/PLAN_ADAPTATION.md).
-reference_form:
-  match_level: 0       # 0 = mot écrit, clitiques collés ; 1 = sans clitiques   (Q2)
-  article_is_clitic: false      # au niveau 1, retirer aussi l'article ال       (Q14)
-  disambiguate_by_lemma: true   # pas de fusion silencieuse des homographes     (Q7)
-
-normalization:
-  comparison_level: 2   # texte comparé : 1 = avec voyelles, 2 = sans voyelles   (Q12)
-
-equivalence:            # échelle 0 à 3 du SPEC §2   (Q3)
-  identity_levels: [0]
-  similarity_levels: [1, 2, 3]
-
-relations:
-  min_identical_block: 2        # éléments consécutifs identiques pour تطابق
-  min_common_elements: 2        # éléments communs pour تشابه
-  reference_counts_as_element: true   # (Q4)
-  max_pairs: 20000              # au-delà, les segments ne sont pas comparés deux à deux
-
-statistics:             # (Q10)
+statistics:             # (Q10) ; contrôle aléatoire, refait sur les cases au lot E
   seed: 20261010
   permutations: 1000
   # Contrôles aléatoires : on mélange les mots entre segments en gardant la taille des
@@ -69,14 +48,3 @@ statistics:             # (Q10)
   controls: [corpus, sura]
   alpha: 0.05           # seuil, appliqué après correction pour tests multiples
   min_cooccurrence: 2   # en dessous, l'association est dite trop rare pour conclure
-
-assistant:              # étape 9, facultative : reformulation d'un résumé par un modèle
-  model: claude-opus-5-5
-  effort: medium        # low | medium | high | xhigh | max
-  max_tokens: 16000
-  max_companions: 8     # compagnons décrits dans le résumé, par ordre de segments communs
-  max_suggestions: 5    # formes proposées à la comparaison
-
-usage_groups:
-  # Relations qui relient deux segments dans un même groupe d'usages (bloc C).
-  links: [identity_total, identity_partial]

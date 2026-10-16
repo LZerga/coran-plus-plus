@@ -14,12 +14,7 @@
     python -m quran_harness verset <sourate:verset>
     python -m quran_harness exemples
     python -m quran_harness fiche <forme>    [--pause strict|souple|verset] [--detail] [--sortie fichier]
-    python -m quran_harness fiche-v0 <forme> # ancienne fiche, avec lemme (retirée au lot D)
-    python -m quran_harness comparer <passage A> <passage B>   # passage = sourate:verset:début-fin
-    python -m quran_harness comparer-formes <forme 1> <forme 2>
     python -m quran_harness web              # interface web sur http://127.0.0.1:8000
-    python -m quran_harness resume <forme>   [--ia] [--racine] [--sans-stats]
-    python -m quran_harness note <forme> <texte> --auteur <nom>
 """
 
 from __future__ import annotations
@@ -29,7 +24,7 @@ import sqlite3
 import sys
 
 from . import __version__
-from .config import NIVEAUX, default_choices, load_config, pause_choices, with_choices
+from .config import default_pause, load_config, pause_choices, with_pause
 from .raw_counts import COUNTERS
 from .sources import check, fetch, load_manifest
 
@@ -210,34 +205,18 @@ def _identite(args: argparse.Namespace) -> int:
     return 0
 
 
-def _pivot(cells, typed: str) -> int:
-    from .index import search_key
-    from .labels import t
-    from .normalize import Level, normalize
-
-    key = search_key(typed)
-    found = next((i for i, cell in enumerate(cells) if normalize(cell.form, Level.NO_VOWELS).replace("ٱ", "ا") == key), None)
-    if found is None:
-        raise SystemExit(t("not_in_span", form=typed, text=" ".join(c.text for c in cells)))
-    return found
-
-
 def _paire(args: argparse.Namespace) -> int:
     from . import pairs
-    from .elements import parse_span
-    from .labels import meta_line, t
+    from .labels import t
 
     connection, meta = _open_database()
-    a, b = (pairs.cells_of_span(connection, *parse_span(span)) for span in (args.a, args.b))
-    signature = pairs.compare(a, _pivot(a, args.pivot), b, _pivot(b, args.pivot), pairs.PairSettings.from_config(load_config()))
-    lines = [
-        f"{t('pair')} — {t('reference_form')} : {args.pivot}",
-        meta_line(meta),
-        f"أ  {args.a}  {' '.join(c.text for c in a)}",
-        f"ب  {args.b}  {' '.join(c.text for c in b)}",
-        *(f"{label} : {value}" for label, value in pairs.describe(a, b, signature).items()),
-    ]
-    _write("\n".join(lines), args.sortie)
+    a, b = (pairs.cells_of_span(connection, *pairs.parse_span(span)) for span in (args.a, args.b))
+    indexes = [pairs.pivot_index(cells, args.pivot) for cells in (a, b)]
+    for cells, index in zip((a, b), indexes):
+        if index is None:
+            raise SystemExit(t("not_in_span", form=args.pivot, text=" ".join(c.text for c in cells)))
+    signature = pairs.compare(a, indexes[0], b, indexes[1], pairs.PairSettings.from_config(load_config()))
+    _write(pairs.render_pair(a, b, signature, args.a, args.b, args.pivot, meta), args.sortie)
     return 0
 
 
@@ -248,7 +227,7 @@ def _familles(args: argparse.Namespace) -> int:
     from .units import FormSettings
 
     connection, meta = _open_database()
-    config = with_choices(load_config(), None, args.pause)
+    config = with_pause(load_config(), args.pause)
     candidates = families.forms_for(connection, args.forme, FormSettings.from_config(config))
     if not candidates:
         print(t("no_occurrence"))
@@ -273,7 +252,7 @@ def _fiche_new(args: argparse.Namespace) -> int:
     from .families import forms_for
 
     connection, meta = _open_database()
-    config = with_choices(load_config(), None, args.pause)
+    config = with_pause(load_config(), args.pause)
     candidates = forms_for(connection, args.forme, FormSettings.from_config(config))
     if not candidates:
         print(t("no_occurrence"))
@@ -309,11 +288,6 @@ def _forme(args: argparse.Namespace) -> int:
     return 0
 
 
-def _method_config(args: argparse.Namespace) -> dict:
-    """config.yaml, with the choices made on the command line."""
-    return with_choices(load_config(), args.niveau, getattr(args, "pause", None))
-
-
 def _web(args: argparse.Namespace) -> int:
     import uvicorn
 
@@ -334,86 +308,6 @@ def _write(text: str, path: str | None) -> None:
         print(t("written", path=path))
     else:
         print(text)
-
-
-def _fiche(args: argparse.Namespace) -> int:
-    from . import fiche
-
-    connection, _ = _open_database()
-    fiches = fiche.build(connection, args.forme, _method_config(args), with_stats=not args.sans_stats)
-    if not fiches:
-        print(f"Aucune occurrence portant une racine pour la forme {args.forme} au niveau {args.niveau}.")
-        return 1
-    _write("\n---\n\n".join(fiche.render(f, args.paires) for f in fiches), args.sortie)
-    return 0
-
-
-def _resume(args: argparse.Namespace) -> int:
-    from . import assistant, fiche
-    from .config import form_level
-
-    connection, _ = _open_database()
-    config = _method_config(args)
-    if args.racine:
-        fiches = fiche.build_root(connection, args.forme, config, with_stats=not args.sans_stats)
-    else:
-        fiches = fiche.build(connection, args.forme, config, with_stats=not args.sans_stats)
-    if not fiches:
-        print(f"Aucune occurrence portant une racine pour {args.forme} au niveau {args.niveau}.")
-        return 1
-    completer = assistant.anthropic_completer(config) if args.ia else None
-    texts = [
-        assistant.render(f, assistant.summarise(connection, f, config, form_level(config), completer)) for f in fiches
-    ]
-    _write("\n---\n\n".join(texts), args.sortie)
-    return 0
-
-
-def _note(args: argparse.Namespace) -> int:
-    from . import assistant
-
-    note = assistant.add_note(args.forme, args.texte, args.auteur, args.lemme)
-    print(f"Note enregistrée dans {assistant.NOTES_PATH} : {note['author']}, {note['date']}.")
-    return 0
-
-
-def _comparer_formes(args: argparse.Namespace) -> int:
-    from . import fiche
-
-    connection, _ = _open_database()
-    config = _method_config(args)
-    chosen = []
-    for form in (args.forme1, args.forme2):
-        fiches = fiche.build(connection, form, config, with_stats=False)
-        if not fiches:
-            print(f"Aucune occurrence portant une racine pour la forme {form} au niveau {args.niveau}.")
-            return 1
-        best = max(fiches, key=lambda f: len(f.occurrences))
-        if len(fiches) > 1:
-            others = ", ".join(f.lemma for f in fiches if f is not best)
-            print(f"{form} : plusieurs lemmes ; retenu {best.lemma}, laissé de côté {others}.")
-        chosen.append(best)
-    _write(fiche.render_companion_comparison(*chosen), args.sortie)
-    return 0
-
-
-def _comparer(args: argparse.Namespace) -> int:
-    from . import compare, fiche
-    from .elements import ElementLoader, parse_span
-
-    connection, meta = _open_database()
-    config = _method_config(args)
-    loader = ElementLoader(connection, config)
-    a, b = (loader.span(*parse_span(text)) for text in (args.a, args.b))
-    parts = fiche.describe(a, b, compare.compare(a, b, compare.Settings.from_config(config)))
-    lines = [
-        f"Comparaison | lecture : {meta['reading']} | forme : {args.niveau} | code {meta['code_version']}",
-        f"A  {args.a}  {' '.join(e.text for e in a)}",
-        f"B  {args.b}  {' '.join(e.text for e in b)}",
-        *(f"{label:<28} {value}" for label, value in parts.items()),
-    ]
-    _write("\n".join(lines), args.sortie)
-    return 0
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -458,8 +352,7 @@ def main(argv: list[str] | None = None) -> int:
     p_verset.set_defaults(func=_verset)
 
     config = load_config()
-    default_niveau, default_pause = default_choices(config)
-    pauses = pause_choices(config)
+    pauses, pause_default = pause_choices(config), default_pause(config)
     for name, func, text in [
         ("racine", _racine, "formes attestées d'une racine"),
         ("forme", _forme, "occurrences d'une forme ; sans voyelles, toutes les formes qu'elle recouvre"),
@@ -482,7 +375,7 @@ def main(argv: list[str] | None = None) -> int:
 
     p_familles = sub.add_parser("familles", help="niveaux 1 et 2 : paires de segments d'une forme et familles")
     p_familles.add_argument("forme")
-    p_familles.add_argument("--pause", choices=pauses, default=default_pause, help="découpage en segments")
+    p_familles.add_argument("--pause", choices=pauses, default=pause_default, help="découpage en segments")
     p_familles.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
     p_familles.set_defaults(func=_familles)
 
@@ -491,54 +384,12 @@ def main(argv: list[str] | None = None) -> int:
     p_web.add_argument("--port", type=int, default=8000)
     p_web.set_defaults(func=_web)
 
-    def method_options(p: argparse.ArgumentParser) -> None:
-        p.add_argument("--niveau", choices=list(NIVEAUX), default=default_niveau, help="ce qu'on appelle « la même forme »")
-        p.add_argument("--lecture", choices=["hafs"], default="hafs")
-        p.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
-
-    p_new = sub.add_parser("fiche", help="بطاقة الصيغة : الهوية، الارتباطات، المقارنات، أنواع الاستعمال، المصفوفات")
-    p_new.add_argument("forme")
-    p_new.add_argument("--pause", choices=pauses, default=default_pause, help="découpage en segments")
-    p_new.add_argument("--detail", action="store_true", help="tout afficher : références, paires, colonnes masquées")
-    p_new.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
-    p_new.set_defaults(func=_fiche_new)
-
-    p_fiche = sub.add_parser("fiche-v0", help="ancienne fiche (spécification v0, avec lemme) ; retirée au lot D")
+    p_fiche = sub.add_parser("fiche", help="بطاقة الصيغة : الهوية، الارتباطات، المقارنات، أنواع الاستعمال، المصفوفات")
     p_fiche.add_argument("forme")
-    p_fiche.add_argument("--pause", choices=pauses, default=default_pause, help="découpage en segments")
-    p_fiche.add_argument("--paires", type=int, default=100, help="nombre de comparaisons affichées")
-    p_fiche.add_argument("--sans-stats", action="store_true", help="ne pas lancer le contrôle aléatoire")
-    method_options(p_fiche)
-    p_fiche.set_defaults(func=_fiche)
-
-    p_resume = sub.add_parser("resume", help="résumé d'une fiche en langage simple, et formes à comparer")
-    p_resume.add_argument("forme")
-    p_resume.add_argument("--racine", action="store_true", help="la demande est une racine, pas une forme")
-    p_resume.add_argument("--ia", action="store_true", help="faire reformuler le résumé par un modèle (envoie les faits à l'API Anthropic)")
-    p_resume.add_argument("--pause", choices=pauses, default=default_pause, help="découpage en segments")
-    p_resume.add_argument("--sans-stats", action="store_true", help="ne pas lancer le contrôle aléatoire")
-    method_options(p_resume)
-    p_resume.set_defaults(func=_resume)
-
-    p_note = sub.add_parser("note", help="enregistrer une note humaine sur une forme")
-    p_note.add_argument("forme")
-    p_note.add_argument("texte")
-    p_note.add_argument("--auteur", required=True)
-    p_note.add_argument("--lemme", default="", help="limiter la note à un lemme, quand deux mots s'écrivent pareil")
-    p_note.set_defaults(func=_note)
-
-    p_formes = sub.add_parser("comparer-formes", help="compagnons communs à deux formes")
-    p_formes.add_argument("forme1")
-    p_formes.add_argument("forme2")
-    p_formes.add_argument("--pause", choices=pauses, default=default_pause, help="découpage en segments")
-    method_options(p_formes)
-    p_formes.set_defaults(func=_comparer_formes)
-
-    p_comparer = sub.add_parser("comparer", help="comparer deux passages donnés par leurs références")
-    p_comparer.add_argument("a", help="sourate:verset:début-fin, par exemple 34:36:1-8")
-    p_comparer.add_argument("b")
-    method_options(p_comparer)
-    p_comparer.set_defaults(func=_comparer)
+    p_fiche.add_argument("--pause", choices=pauses, default=pause_default, help="découpage en segments")
+    p_fiche.add_argument("--detail", action="store_true", help="tout afficher : références, paires, colonnes masquées")
+    p_fiche.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
+    p_fiche.set_defaults(func=_fiche_new)
 
     args = parser.parse_args(argv)
     return args.func(args)

@@ -333,6 +333,16 @@ def cells_of_segment(connection: sqlite3.Connection, segment_id: int) -> list[Ce
     return [_cell(row) for row in rows]
 
 
+def parse_span(text: str) -> tuple[int, int, int, int]:
+    """`sura:aya:start-end` (word positions) → numbers."""
+    try:
+        sura, aya, positions = text.split(":")
+        start, end = positions.split("-")
+        return int(sura), int(aya), int(start), int(end)
+    except ValueError:
+        raise ValueError(f"passage attendu sous la forme sourate:verset:début-fin, reçu {text!r}") from None
+
+
 # --- Rendering ------------------------------------------------------------------
 
 
@@ -371,3 +381,28 @@ def describe(a: Sequence[Cell], b: Sequence[Cell], signature: Signature) -> dict
         t("order"): " ".join(map(str, signature.order[1])) + f" ({t('inversions')} : {signature.inversions})",
         t("codes"): " ".join(f"{code}:{n}" for code, n in sorted(signature.codes.items())),
     }
+
+
+def pivot_index(cells: Sequence[Cell], typed: str) -> int | None:
+    """Where the typed reference form stands in a passage (matched without vowels)."""
+    from .index import search_key
+    from .normalize import Level, normalize
+
+    key = search_key(typed)
+    return next((i for i, cell in enumerate(cells) if normalize(cell.form, Level.NO_VOWELS).replace("ٱ", "ا") == key), None)
+
+
+def render_pair(a: Sequence[Cell], b: Sequence[Cell], signature: Signature, span_a: str, span_b: str, pivot: str, meta: dict) -> str:
+    """One pair, as the command `paire` prints it (Markdown, Arabic)."""
+    from .labels import meta_line
+
+    lines = [
+        f"# {t('pair')} — {t('reference_form')} : {pivot}",
+        "",
+        meta_line(meta),
+        "",
+        f"- أ  {span_a}  {' '.join(c.text for c in a)}",
+        f"- ب  {span_b}  {' '.join(c.text for c in b)}",
+        *(f"- {label} : {value}" for label, value in describe(a, b, signature).items()),
+    ]
+    return "\n".join(lines) + "\n"

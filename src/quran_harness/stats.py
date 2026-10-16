@@ -27,10 +27,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from .elements import _columns
-
 CONTROLS = ("corpus", "sura")
-ItemKey = tuple[str, str, str]  # form, lemmas, roots: what makes two words the same companion
+ItemKey = tuple  # what makes two words the same companion (rebuilt on the cells at lot E)
 
 
 @dataclass(frozen=True)
@@ -103,31 +101,6 @@ class Corpus:
             raise ValueError("les mots doivent être donnés dans l'ordre du texte")
         pairs = np.unique(self.item * self.n_segments + self.segment)
         self.segments_per_item = np.bincount(pairs // self.n_segments, minlength=len(keys))
-
-    @classmethod
-    def load(cls, connection: sqlite3.Connection, config: dict, scheme: str) -> Corpus:
-        """Every word of the text but the sura-opening basmalas, keyed as the fiche keys its companions."""
-        _, core_column = _columns(config)
-        stems: dict[int, tuple[set[str], set[str]]] = {}
-        for word_id, root, lemma in connection.execute("SELECT word_id, root, lemma FROM word_segments WHERE kind = 'stem'"):
-            roots, lemmas = stems.setdefault(word_id, (set(), set()))
-            if root:
-                roots.add(root)
-            if lemma:
-                lemmas.add(lemma)
-        rows = connection.execute(
-            f"""SELECT w.id, w.ref, w.sura, {core_column}, sw.segment_id
-                FROM words w JOIN word_forms f ON f.word_id = w.id
-                JOIN segment_words sw ON sw.word_id = w.id
-                JOIN segmentations n ON n.id = sw.segmentation_id
-                WHERE n.name = ? AND w.aya > 0 ORDER BY w.id""",
-            (scheme,),
-        ).fetchall()
-        items = []
-        for word_id, _, _, core, _ in rows:
-            roots, lemmas = stems.get(word_id, ((), ()))
-            items.append((core, " ".join(sorted(lemmas)), " ".join(sorted(roots))))
-        return cls(items, [row[4] for row in rows], [row[2] for row in rows], [row[1] for row in rows])
 
     def _shuffled_segments(self, rng: np.random.Generator, control: str) -> np.ndarray:
         """Segment of each word once the words are shuffled between the slots of the text."""

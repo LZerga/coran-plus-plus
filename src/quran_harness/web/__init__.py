@@ -1,9 +1,10 @@
-"""Step 8: a small web interface over the same functions as the command line.
+"""Step 8: the web interface, in Arabic, over the same functions as the command line.
 
     python -m quran_harness web        # then open http://127.0.0.1:8000
 
-The server only reads the database. Every answer carries the parameters it was
-computed with (reading, form level, segmentation, code version).
+The server only reads the database. It renders the same Markdown as the command
+line (`identite`, `fiche`, `paire`) and turns it into HTML: the page shows exactly
+what the command prints. Every answer carries the reading and the code version.
 """
 
 from __future__ import annotations
@@ -11,168 +12,107 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, Response
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 
-from .. import __version__, assistant, export, fiche
-from ..config import NIVEAUX, default_choices, form_level, load_config, pause_choices, with_choices
+from .. import __version__, pairs, root_identity, sheet
+from ..config import default_pause, load_config, pause_choices, with_pause
+from ..families import forms_for
+from ..labels import t
+from ..segmentation import selected_scheme
+from ..units import FormSettings, forms_of_root
+from .markdown import to_html
 
 PAGE = Path(__file__).parent / "index.html"
-MODES = ("forme", "racine")
-LECTURES = ("hafs",)
+PAUSE_LABELS = {"strict": "waqf-strict", "souple": "waqf-souple", "verset": "aya"}
 
 
 def create_app(db_path: Path) -> FastAPI:
-    app = FastAPI(title="Harnais d'étude des corrélations coraniques", version=__version__)
+    app = FastAPI(title="Coran++", version=__version__)
 
-    def connect() -> sqlite3.Connection:
+    def connect() -> tuple[sqlite3.Connection, dict[str, str]]:
         if not db_path.is_file():
-            raise HTTPException(503, "Base absente : lancer d'abord `python -m quran_harness build`.")
-        return sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
+            raise HTTPException(503, t("no_database"))
+        connection = sqlite3.connect(f"file:{db_path.as_posix()}?mode=ro", uri=True)
+        return connection, dict(connection.execute("SELECT key, value FROM meta"))
 
-    def build(connection, text: str, mode: str, niveau: str, pause: str, lecture: str, stats: bool) -> list[fiche.Fiche]:
-        if mode not in MODES:
-            raise HTTPException(400, f"mode inconnu : {mode!r} (attendu : {', '.join(MODES)})")
-        if lecture not in LECTURES:
-            raise HTTPException(400, f"lecture indisponible : {lecture!r} (l'analyse ne porte que sur hafs)")
+    def configured(pause: str | None) -> dict:
         try:
-            config = with_choices(load_config(), niveau, pause)
+            return with_pause(load_config(), pause)
         except ValueError as error:
             raise HTTPException(400, str(error)) from None
+
+    def required(text: str) -> str:
         text = text.strip()
         if not text:
-            raise HTTPException(400, "Indiquer une forme ou une racine.")
-        if mode == "racine":
-            fiches = fiche.build_root(connection, text, config, with_stats=stats)
-        else:
-            fiches = fiche.build(connection, text, config, with_stats=stats)
-        if not fiches:
-            what = "la racine" if mode == "racine" else "la forme"
-            raise HTTPException(404, f"Aucune occurrence portant une racine pour {what} {text} (niveau {niveau}).")
-        return fiches
-
-    def csv_response(text: str, name: str) -> Response:
-        headers = {"Content-Disposition": f'attachment; filename="{name}.csv"'}
-        return Response(text.encode("utf-8"), media_type="text/csv; charset=utf-8", headers=headers)
-
-    niveau_default, pause_default = default_choices(load_config())
+            raise HTTPException(400, t("empty_query"))
+        return text
 
     @app.get("/", include_in_schema=False)
     def page() -> FileResponse:
-        return FileResponse(PAGE, media_type="text/html; charset=utf-8")
+        # No cache: after an update, the browser takes the new page at once.
+        return FileResponse(PAGE, media_type="text/html; charset=utf-8", headers={"Cache-Control": "no-cache"})
 
     @app.get("/api/meta")
     def meta() -> dict:
         config = load_config()
-        niveau, pause = default_choices(config)
         return {
             "version": __version__,
-            "modes": list(MODES),
-            "niveaux": [{"id": name, "label": label} for name, (_, label) in NIVEAUX.items()],
-            "pauses": pause_choices(config),
-            "lectures": list(LECTURES),
-            "defaults": {"niveau": niveau, "pause": pause, "lecture": LECTURES[0]},
-            "statistics": config["statistics"],
+            "pauses": [{"id": p, "label": t(PAUSE_LABELS.get(p, p))} for p in pause_choices(config)],
+            "default_pause": default_pause(config),
         }
 
+    @app.get("/api/racine")
+    def racine(q: str) -> dict:
+        """Home page of a root: its identity (level 0) and the forms one can open."""
+        root = required(q)
+        connection, meta = connect()
+        try:
+            found = root_identity.identity(connection, root)
+            if found is None:
+                raise HTTPException(404, t("no_root"))
+            forms = [{"form": f.form, "occurrences": f.occurrences, "ayas": f.ayas} for f in forms_of_root(connection, root)]
+            return {"root": found.root, "html": to_html(root_identity.render(found, meta)), "forms": forms}
+        finally:
+            connection.close()
+
     @app.get("/api/fiche")
-    def get_fiche(
-        q: str,
-        mode: str = "forme",
-        niveau: str = niveau_default,
-        pause: str = pause_default,
-        lecture: str = "hafs",
-        stats: bool = False,
-        paires: int = Query(200, ge=0, le=5000),
-    ) -> dict:
-        connection = connect()
+    def fiche(q: str, pause: str | None = None, detail: bool = False) -> dict:
+        """The sheet of a form. Typed without vowels, the most frequent form is shown and the others listed."""
+        typed = required(q)
+        config = configured(pause)
+        connection, meta = connect()
         try:
-            fiches = build(connection, q, mode, niveau, pause, lecture, stats)
-            config = with_choices(load_config(), niveau, pause)
-            cards = []
-            for f in fiches:
-                summary = assistant.summarise(connection, f, config, form_level(config))
-                cards.append({**export.fiche_to_dict(f, paires), "summary": assistant.to_dict(summary)})
-            return {"query": q.strip(), "mode": mode, "fiches": cards}
+            candidates = forms_for(connection, typed, FormSettings.from_config(config))
+            if not candidates:
+                raise HTTPException(404, t("no_occurrence"))
+            form = next(iter(candidates))
+            found = sheet.build(connection, form, selected_scheme(config), config)
+            return {
+                "form": form,
+                "candidates": [{"form": f, "occurrences": n} for f, n in candidates.items()],
+                "html": to_html(sheet.render(found, meta, config, detail=detail)),
+            }
         finally:
             connection.close()
 
-    @app.get("/api/resume")
-    def get_summary(
-        q: str,
-        mode: str = "forme",
-        niveau: str = niveau_default,
-        pause: str = pause_default,
-        lecture: str = "hafs",
-        stats: bool = False,
-        index: int = Query(0, ge=0),
-        ia: bool = False,
-    ) -> dict:
-        """The summary of one fiche; with `ia`, rephrased by a model that is sent the facts only."""
-        connection = connect()
+    @app.get("/api/paire")
+    def paire(a: str, b: str, pivot: str) -> dict:
+        """Two passages compared directly around a reference form (level 1)."""
+        connection, meta = connect()
         try:
-            fiches = build(connection, q, mode, niveau, pause, lecture, stats)
-            if index >= len(fiches):
-                raise HTTPException(404, f"Fiche n° {index} absente : {len(fiches)} fiche(s) pour cette demande.")
-            config = with_choices(load_config(), niveau, pause)
-            completer = assistant.anthropic_completer(config) if ia else None
-            return assistant.to_dict(assistant.summarise(connection, fiches[index], config, form_level(config), completer))
-        finally:
-            connection.close()
-
-    @app.get("/api/fiche.csv")
-    def get_fiche_csv(
-        q: str,
-        table: str,
-        mode: str = "forme",
-        niveau: str = niveau_default,
-        pause: str = pause_default,
-        lecture: str = "hafs",
-        stats: bool = False,
-        index: int = Query(0, ge=0),
-    ) -> Response:
-        if table not in export.CSV_TABLES:
-            raise HTTPException(400, f"table inconnue : {table!r} (attendu : {', '.join(export.CSV_TABLES)})")
-        connection = connect()
-        try:
-            fiches = build(connection, q, mode, niveau, pause, lecture, stats)
-            if index >= len(fiches):
-                raise HTTPException(404, f"Fiche n° {index} absente : {len(fiches)} fiche(s) pour cette demande.")
-            return csv_response(export.fiche_to_csv(fiches[index], table), f"{table}_{mode}")
-        finally:
-            connection.close()
-
-    def pair_of_fiches(connection, a: str, b: str, mode: str, niveau: str, pause: str, lecture: str):
-        """For each side, the fiche of the lemma with the most occurrences, and the lemmas left aside."""
-        chosen, notes = [], []
-        for text in (a, b):
-            fiches = build(connection, text, mode, niveau, pause, lecture, stats=False)
-            best = max(fiches, key=lambda f: len(f.occurrences))
-            if len(fiches) > 1:
-                others = ", ".join(f.lemma for f in fiches if f is not best)
-                notes.append(f"{text.strip()} : plusieurs lemmes ; retenu {best.lemma}, laissé de côté {others}.")
-            chosen.append(best)
-        return chosen, notes
-
-    @app.get("/api/comparer")
-    def get_comparison(
-        a: str, b: str, mode: str = "forme", niveau: str = niveau_default, pause: str = pause_default, lecture: str = "hafs"
-    ) -> dict:
-        connection = connect()
-        try:
-            (first, second), notes = pair_of_fiches(connection, a, b, mode, niveau, pause, lecture)
-            return {**export.companions_to_dict(first, second), "notes": notes, "mode": mode}
-        finally:
-            connection.close()
-
-    @app.get("/api/comparer.csv")
-    def get_comparison_csv(
-        a: str, b: str, mode: str = "forme", niveau: str = niveau_default, pause: str = pause_default, lecture: str = "hafs"
-    ) -> Response:
-        connection = connect()
-        try:
-            (first, second), _ = pair_of_fiches(connection, a, b, mode, niveau, pause, lecture)
-            return csv_response(export.companions_to_csv(first, second), f"compagnons_{mode}")
+            try:
+                first, second = (pairs.cells_of_span(connection, *pairs.parse_span(required(x))) for x in (a, b))
+            except ValueError as error:
+                raise HTTPException(400, str(error)) from None
+            indexes = []
+            for cells in (first, second):
+                index = pairs.pivot_index(cells, required(pivot))
+                if index is None:
+                    raise HTTPException(404, t("not_in_span", form=pivot, text=" ".join(c.text for c in cells)))
+                indexes.append(index)
+            signature = pairs.compare(first, indexes[0], second, indexes[1], pairs.PairSettings.from_config(load_config()))
+            return {"html": to_html(pairs.render_pair(first, second, signature, a, b, pivot, meta))}
         finally:
             connection.close()
 
