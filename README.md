@@ -1,8 +1,10 @@
 # Coran++
 
-A descriptive toolkit for studying correlations between word forms within Quranic roots,
-based on the research paper « ملاحظات نقدية عامة حول العقل اللغوي العربي »
-(`docs/document_de_recherche.pdf`).
+**قواعد انتظام الجذر في القرآن — The regularities of Quranic roots**
+
+A descriptive toolkit for studying how the word forms of a Quranic root associate with
+other forms, letters and pronouns within verse segments. The method comes from the
+author's research notes (`docs/document_de_recherche.pdf`).
 
 Author: Lotfi Zerga.
 
