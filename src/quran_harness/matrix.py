@@ -252,7 +252,7 @@ def build_all(analysis: Analysis, relative_min: float) -> list[Matrix]:
 # --- Rendering ------------------------------------------------------------------
 
 
-def render(analysis: Analysis, matrices: list[Matrix]) -> list[str]:
+def render(analysis: Analysis, matrices: list[Matrix], light: bool = False) -> list[str]:
     from .labels import t
 
     lines: list[str] = []
@@ -271,12 +271,20 @@ def render(analysis: Analysis, matrices: list[Matrix]) -> list[str]:
             + (f" ؛ {t('moved')} : {len(m.moved)}" if m.moved else ""),
             "",
         ]
-        header = [t("segment")] + [(f"**{t('pivot')}**" if c.is_pivot else str(k)) for k, c in enumerate(m.columns, start=1)]
+        # Light view (SPEC step 8): columns filled by one row only are hidden and counted.
+        shown = [
+            k for k, c in enumerate(m.columns)
+            if not light or c.is_pivot or sum(cell is not None for cell in c.cells) >= 2
+        ]  # fmt: skip
+        if len(shown) < len(m.columns):
+            lines += [t("hidden_columns", n=len(m.columns) - len(shown)), ""]
+        header = [t("segment")] + [(f"**{t('pivot')}**" if m.columns[k].is_pivot else str(k + 1)) for k in shown]
         lines += ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
         for x, r in enumerate(m.rows):
             row = analysis.rows[r]
-            cells = [row.cells[c.cells[x]].text if c.cells[x] is not None else pairs.ABSENT for c in m.columns]
+            cells = [row.cells[m.columns[k].cells[x]].text if m.columns[k].cells[x] is not None else pairs.ABSENT for k in shown]
             lines.append(f"| {row.segment_ref} | " + " | ".join(cells) + " |")
-        kinds = [t("column_kind")] + [t(r.kind) + (f"، {t('optional')}" if r.optional else "") for r in m.readings]
+        readings = [m.readings[k] for k in shown]
+        kinds = [t("column_kind")] + [t(r.kind) + (f"، {t('optional')}" if r.optional else "") for r in readings]
         lines.append("| " + " | ".join(kinds) + " |")
     return lines

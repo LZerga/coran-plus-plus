@@ -969,3 +969,19 @@ La commande `familles` affiche maintenant la matrice et le gabarit de chaque fam
 5. **Une colonne par case**, pas une par bloc : le SPEC dit « les blocs forment chacun une
    seule unité ». Les blocs n'étant pas les mêmes d'une paire à l'autre, je garde une
    colonne par case ; un bloc se lit comme une suite de colonnes fixes dans le gabarit.
+
+### Nouvelle fiche (2026-10-16)
+Commande `fiche <forme> [--pause] [--detail]` (`src/quran_harness/sheet.py`, `tests/test_sheet.py`) ;
+exemple : `docs/exemple_fiche_yaqdir.md`. L'ancienne fiche reste disponible sous
+`fiche-v0` jusqu'au branchement de l'interface web, puis sera retirée avec le code au lemme.
+
+- **أ. الهوية** : racine, case au niveau 0 (`فَعَلَ — مضارع معلوم (12)`), occurrences,
+  segments, position de la forme (في الأول / في الوسط / في الأخير).
+- **ب. الارتباطات** : (a) même racine, (b) autres racines, (c) lettres et pronoms ; colonnes
+  forme, segments, avant, après ; références avec `--detail`. Le statut est « ملاحظ » :
+  le contrôle aléatoire n'est pas encore refait sur les cases (lot E).
+- **ج. أنواع الاستعمال** : types des paires, familles, matrices et gabarits.
+- **Tableaux allégés** (réponse à la question de lisibilité de la matrice) : par défaut, les
+  colonnes d'une matrice remplies par un seul segment sont masquées et comptées ; `--detail`
+  montre tout, avec chaque paire.
+- Pas encore : regroupement des formes proches (D-16) et couleurs (lot H) ; statistique (lot E).

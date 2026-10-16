@@ -131,5 +131,5 @@ def test_command_line(built_db, monkeypatch, capsys, tmp_path):
     assert cli.main(arguments) == 0
     assert "plusieurs lemmes" in capsys.readouterr().out
     assert "même forme associée : 8" in out.read_text(encoding="utf-8")
-    assert cli.main(["fiche", YAQDIR, "--sans-stats", "--niveau", "noyau", "--pause", "souple"]) == 0
+    assert cli.main(["fiche-v0", YAQDIR, "--sans-stats", "--niveau", "noyau", "--pause", "souple"]) == 0
     assert "## C. Usages regroupés par ressemblance" in capsys.readouterr().out

@@ -13,7 +13,8 @@
     python -m quran_harness decoupages
     python -m quran_harness verset <sourate:verset>
     python -m quran_harness exemples
-    python -m quran_harness fiche <forme>    [--niveau ...] [--pause strict|souple|verset] [--sortie fichier]
+    python -m quran_harness fiche <forme>    [--pause strict|souple|verset] [--detail] [--sortie fichier]
+    python -m quran_harness fiche-v0 <forme> # ancienne fiche, avec lemme (retirée au lot D)
     python -m quran_harness comparer <passage A> <passage B>   # passage = sourate:verset:début-fin
     python -m quran_harness comparer-formes <forme 1> <forme 2>
     python -m quran_harness web              # interface web sur http://127.0.0.1:8000
@@ -263,6 +264,29 @@ def _familles(args: argparse.Namespace) -> int:
     return 0
 
 
+def _fiche_new(args: argparse.Namespace) -> int:
+    from . import sheet
+    from .labels import t
+    from .segmentation import selected_scheme
+    from .units import FormSettings
+
+    from .families import forms_for
+
+    connection, meta = _open_database()
+    config = with_choices(load_config(), None, args.pause)
+    candidates = forms_for(connection, args.forme, FormSettings.from_config(config))
+    if not candidates:
+        print(t("no_occurrence"))
+        return 1
+    form = next(iter(candidates))
+    if len(candidates) > 1:
+        others = "، ".join(f"{f} ({n})" for f, n in list(candidates.items())[1:])
+        print(t("retained", typed=args.forme, form=form, n=candidates[form], others=others) + "\n")
+    found = sheet.build(connection, form, selected_scheme(config), config)
+    _write(sheet.render(found, meta, config, detail=args.detail), args.sortie)
+    return 0
+
+
 def _forme(args: argparse.Namespace) -> int:
     from .labels import meta_line, t
     from .units import FormSettings, by_form, occurrences_of_form
@@ -472,7 +496,14 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--lecture", choices=["hafs"], default="hafs")
         p.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
 
-    p_fiche = sub.add_parser("fiche", help="carte d'identité, compagnons et comparaisons d'une forme")
+    p_new = sub.add_parser("fiche", help="بطاقة الصيغة : الهوية، الارتباطات، المقارنات، أنواع الاستعمال، المصفوفات")
+    p_new.add_argument("forme")
+    p_new.add_argument("--pause", choices=pauses, default=default_pause, help="découpage en segments")
+    p_new.add_argument("--detail", action="store_true", help="tout afficher : références, paires, colonnes masquées")
+    p_new.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
+    p_new.set_defaults(func=_fiche_new)
+
+    p_fiche = sub.add_parser("fiche-v0", help="ancienne fiche (spécification v0, avec lemme) ; retirée au lot D")
     p_fiche.add_argument("forme")
     p_fiche.add_argument("--pause", choices=pauses, default=default_pause, help="découpage en segments")
     p_fiche.add_argument("--paires", type=int, default=100, help="nombre de comparaisons affichées")

@@ -131,9 +131,9 @@ def test_unknown_form_has_no_fiche(db):
 def test_command_line(built_db, monkeypatch, capsys, tmp_path):
     monkeypatch.setattr(ingest, "DB_PATH", built_db)
     out = tmp_path / "fiche.md"
-    assert cli.main(["fiche", YAQDIR, "--sans-stats", "--niveau", "noyau", "--pause", "souple", "--sortie", str(out)]) == 0
+    assert cli.main(["fiche-v0", YAQDIR, "--sans-stats", "--niveau", "noyau", "--pause", "souple", "--sortie", str(out)]) == 0
     assert "découpage : waqf-souple" in out.read_text(encoding="utf-8")
     assert cli.main(["comparer", "14:18:13-18", "2:264:28-33", "--niveau", "noyau"]) == 0
     output = capsys.readouterr().out
     assert "ordre différent" in output and "identité partielle" in output
-    assert cli.main(["fiche", "zzz"]) == 1
+    assert cli.main(["fiche-v0", "zzz"]) == 1
