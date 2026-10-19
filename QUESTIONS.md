@@ -1049,3 +1049,49 @@ jamais une base de comparaison.
 
 Correction au passage (niveau 0) : le وزن d'un nom avec alif suscrit après une shadda
 (`عَلَّٰم`) n'était pas reconnu ; il l'est maintenant (`فَعَّال` → case « ملتبسة : صيغة مبالغة »).
+
+---
+
+## Lot F, téléchargements (2026-10-18)
+
+- **Q28 — suite** : l'utilisateur a donné son accord pour le lot F et pour lisan345 sans
+  licence déclarée (2026-10-18). Les dix dictionnaires de D-25 et lisan345 sont dans
+  `data/raw/` (voir `data/SOURCES.md`, §7 et §8). Q28 reste ouverte jusqu'à l'extraction
+  des articles : la table وزن → types n'est toujours pas complétée.
+- Le générateur de تصريف (Qutrub) n'est **pas** encore téléchargé.
+
+### Q33 — Les dictionnaires d'OpenITI n'ont aucune voyelle
+Mesuré : 0 حركة dans les dix fichiers, et dans toutes leurs versions secondaires de
+l'archive. Le SPEC (§2.0) prévoyait un texte « partiellement vocalisé » et une comparaison
+« à plusieurs niveaux de الشكل ». Avec ces fichiers, seule la comparaison au niveau
+`squelette sans الشكل` est possible : `قَدَر`, `قَدْر`, `قِدْر`, `قُدِرَ` ont le même
+squelette `قدر` et ne se distinguent pas par simple correspondance.
+- **Valeur par défaut prudente** (appliquée tant que l'auteur n'a pas tranché) : une
+  correspondance de squelette seule donne « à vérifier », jamais « attestée » (règle du
+  SPEC sur les correspondances partielles).
+- **Piste, non appliquée** : les dictionnaires classiques décrivent souvent la vocalisation
+  en toutes lettres (« بالتحريك »، « بالكسر »، « بالفتح »، « كزنجبيل »). Lire ces indications
+  donnerait une vocalisation explicite, mais c'est une interprétation du texte de l'article :
+  à valider par l'auteur avant tout code.
+- **Autre piste** : chercher une édition vocalisée d'un des dix dictionnaires. Je n'en ai pas
+  cherché ; rien n'est téléchargé dans ce sens.
+
+### Q34 — Une seule version par dictionnaire : la version « primaire » d'OpenITI
+OpenITI a 2 à 4 versions de chaque dictionnaire (éditions numériques différentes). J'ai pris
+la version marquée `PRIMARY_VERSION`. Pour لسان العرب, c'est la seule dont les articles sont
+balisés (`### $ racine:`), ce qui facilite le découpage. Les neuf autres n'ont aucune balise
+d'article. Valeur par défaut : version primaire ; à revoir si une autre version s'avère
+mieux découpable.
+
+### Q35 — Écriture des racines faibles : OpenITI et lisan345 ne s'accordent pas
+Contrôle croisé (titres d'articles de لسان العرب dans OpenITI / racines de lisan345) :
+8 611 communes, 507 seulement dans OpenITI, 652 seulement dans lisan345. Les écarts portent
+surtout sur la dernière lettre faible (`أتى` / `أتي`, `أخا` / `أخو`). Le corpus coranique
+(QAC) écrit lui-même ses racines d'une troisième façon (`Aty`, `Axw` en translittération).
+- **Valeur par défaut** : aucune correspondance n'est forcée. Le rapprochement des trois
+  écritures sera une table explicite, documentée et testée (à faire avec l'extraction).
+
+**Q31 — confirmée par l'utilisateur (2026-10-19)** : définition de la formule (bloc d'au
+moins 3 cases partagé avec un autre segment de la même forme) et de la covariation
+(remplissages propres à chaque forme, au moins 3 segments de chaque côté, remplissage
+dominant à 75 % au moins) acceptées telles quelles.
