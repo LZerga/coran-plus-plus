@@ -104,7 +104,7 @@ def is_sound(root: str) -> bool:
 
 
 # Endings of number and of the tanween alef, set aside to read the وزن of the base (level 0 only).
-_ENDINGS = ("ُون", "ِين", "َين", "َان", "َات", "َٰت")
+_ENDINGS = ("ُون", "ِين", "َيْن", "َين", "َان", "َات", "َٰت")
 
 
 def pattern_of(stem: str, root: str, noun: bool = False) -> str | None:

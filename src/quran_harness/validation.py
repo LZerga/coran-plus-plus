@@ -38,12 +38,13 @@ class StatsSettings:
     alpha: float
     min_cooccurrence: int
     support_min: int
+    relative_min: float = 0.75
 
     @classmethod
     def from_config(cls, config: dict) -> StatsSettings:
         s = config["statistics"]
         return cls(s["seed"], s["permutations"], tuple(s["controls"]), s["alpha"], s["min_cooccurrence"],
-                   config["comparison"]["support_min"])  # fmt: skip
+                   config["comparison"]["support_min"], config["matrix"]["relative_min"])  # fmt: skip
 
 
 @dataclass(frozen=True)
@@ -151,7 +152,7 @@ def constraints(analysis: Analysis, m: Matrix, settings: StatsSettings) -> list[
     groups: dict[tuple[bool, ...], list[int]] = {}
     for k, column in enumerate(m.columns):
         presence = tuple(cell is not None for cell in column.cells)
-        if not column.is_pivot and 0 < sum(presence) < len(rows):
+        if not column.is_pivot and 0 < sum(presence) < len(rows) and _concrete(analysis, m, k, settings.relative_min):
             groups.setdefault(presence, []).append(k)
     rng = np.random.default_rng([settings.seed, 7])
     tests: list[tuple[str, str, int, float]] = []
@@ -201,6 +202,13 @@ def _runs(columns: list[int]) -> list[list[int]]:
 
 def _run_text(analysis: Analysis, m: Matrix, run: list[int]) -> str:
     return " ".join(_filler(analysis, m, k) for k in run)
+
+
+def _concrete(analysis: Analysis, m: Matrix, k: int, relative_min: float) -> bool:
+    """A column one form fills (in at least `relative_min` of the rows where it is present): an element,
+    not a mere position holding different words from row to row (Q37)."""
+    forms = [analysis.rows[r].cells[c].form for r, c in zip(m.rows, m.columns[k].cells) if c is not None]
+    return bool(forms) and max(forms.count(f) for f in set(forms)) / len(forms) >= relative_min
 
 
 def _filler(analysis: Analysis, m: Matrix, k: int) -> str:

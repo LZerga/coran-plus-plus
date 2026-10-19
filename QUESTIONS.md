@@ -1166,3 +1166,34 @@ Effet mesuré :
   l'échelle de la racine — reste possible ; à décider au vu des essais.
 - Les covariations comptent encore les حروف (`وَ / ذَٰلِك` entre يقدر et تقدير) : (a) ne
   portait que sur les liens des familles. À rediscuter si cela gêne la lecture.
+
+---
+
+## Première étude complète : racine قلب (2026-10-19)
+
+Commande : `etude قلب --pause souple`. 168 occurrences, 41 formes, 820 paires de formes,
+68 s. Dossier : `sorties/قلب/2026-10-19_souple_stats_0e4882c139/` (non versionné).
+
+Défauts de code vus dans le rapport et corrigés :
+- **Contraintes entre colonnes** : elles étaient testées aussi entre colonnes qui portent
+  des mots différents d'une ligne à l'autre (« وَ… ⇒ وَ… », « ٱللَّهُ… ⇒ ٱللَّهُ… ») : ce sont des
+  positions, pas des éléments. Désormais seules les colonnes remplies par une même forme
+  (au moins 75 % de leurs lignes, D-09) sont testées (Q37). Pour قلب : plus aucune
+  contrainte établie.
+- **Tableau formes × formes** : trié par part, il mettait en tête des formes à une seule
+  occurrence (1 paire sur 1). Trié maintenant par nombre de paires qui se croisent.
+- **« Formes à usage isolé »** : la liste prenait toute forme ayant au moins un segment
+  isolé. Séparé en « toutes ses occurrences isolées » / « quelques segments isolés ».
+- **Niveau 0** : le duel avec sukūn (`قَلْبَيْن`) n'était pas ramené au وزن `فَعْل`.
+
+### Q38 — Le corpus donne `قلب` au féminin
+Le Quranic Arabic Corpus annote `قَلْب` « FS » (féminin singulier) et `قُلُوب` « FP ». La
+fiche d'identité affiche donc « مفرد مؤنث ». Ce n'est pas corrigé : le harnais affiche les
+catégories du corpus sans les modifier (règle 2). À savoir pour lire le niveau 0 ; faut-il
+signaler ces traits comme « selon le corpus » de façon plus visible, ou les retirer ?
+
+### Q39 — Associations établies sur 2 segments
+Pour قلب, 97 associations sont « مثبت إحصائيا », dont 61 sur 2 segments seulement
+(`statistics.min_cooccurrence: 2`). Un mot rare présent deux fois avec la forme passe le
+contrôle (l'attendu est proche de 0). C'est statistiquement exact, mais cela noie la lecture.
+Avec un minimum de 3 segments : 36 associations. Défaut actuel : 2 (Q10) ; à décider.

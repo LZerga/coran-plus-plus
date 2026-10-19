@@ -211,7 +211,13 @@ def _root_families(connection: sqlite3.Connection, all_profiles: list[profiles.P
             template = matrix.build(analysis, family, config["matrix"]["relative_min"]).template
         groups.append({"forms": dict(members.most_common()), "rows": len(family.rows), "cohesion": family.cohesion,
                        "template": template, "refs": [rows[r].segment_ref for r in family.rows]})  # fmt: skip
-    return {"families": groups, "forms_alone": sorted({owner[f.rows[0]] for f in analysis.families if f.isolated})}
+    isolated = Counter(owner[f.rows[0]] for f in analysis.families if f.isolated)
+    totals = Counter(owner)
+    return {
+        "families": groups,
+        "forms_alone": sorted(form for form, n in isolated.items() if n == totals[form]),
+        "isolated_uses": {form: n for form, n in isolated.most_common() if n < totals[form]},
+    }
 
 
 def _dominant(counter: Counter) -> str:
@@ -289,8 +295,9 @@ def _report(found, forms, built, findings, pair_rows, root_families, informative
 
     # ب. Classification: forms × forms, families of the root
     lines += ["", f"## {t('classify_section')}", "", f"### {t('forms_pairs_title')}", ""]
-    ranked = sorted(pair_rows, key=lambda r: -(r["case_b"] + r["case_a"]) / max(r["pairs"], 1))
-    lines += [f"| {t('form')} 1 | {t('form')} 2 | {t('pairs')} | أ | ب | ج | {t('mixed_families')} |", "|---|---|---|---|---|---|---|"]
+    ranked = sorted(pair_rows, key=lambda r: (-(r["pairs"] - r["case_c"]), -r["pairs"]))
+    lines += [t("forms_pairs_note"), "",
+              f"| {t('form')} 1 | {t('form')} 2 | {t('pairs')} | أ | ب | ج | {t('mixed_families')} |", "|---|---|---|---|---|---|---|"]
     for r in ranked[:40]:
         lines.append(f"| {r['a']} | {r['b']} | {r['pairs']} | {r['case_a']} | {r['case_b']} | {r['case_c']} | {r['mixed_families']} |")
     if len(ranked) > 40:
@@ -308,6 +315,9 @@ def _report(found, forms, built, findings, pair_rows, root_families, informative
         lines += ["", t("one_big_family")]
     alone = root_families["forms_alone"]
     lines += ["", f"{t('forms_alone')} : {'، '.join(alone) or '—'}"]
+    some = root_families["isolated_uses"]
+    if some:
+        lines.append(f"{t('isolated_uses')} : " + "، ".join(f"{form} ({n})" for form, n in some.items()))
 
     # أ. Description: the forms and their core dimensions
     lines += ["", f"## {t('describe_section')}", "",
