@@ -66,3 +66,37 @@ def test_fetch_refuses_terms_without_explicit_acceptance(tmp_path):
     source = _source(tmp_path / "toy.txt", b"abc", requires_terms_acceptance=True)
     assert "conditions" in fetch(source)
     assert not source.path.exists()
+
+
+def _toy_zip(tmp_path, members: dict[str, bytes]):
+    import zipfile
+
+    archive = tmp_path / "toy.zip"
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as z:
+        for name, content in members.items():
+            z.writestr(name, content)
+    return archive
+
+
+def test_read_archive_member_reads_only_the_named_member(tmp_path):
+    from quran_harness.sources import read_archive_member
+
+    archive = _toy_zip(tmp_path, {"a/book.txt": "لسان".encode(), "a/other.txt": b"x"})
+    content = read_archive_member("https://example.invalid/toy.zip", "a/book.txt", opener=lambda _: open(archive, "rb"))
+    assert content == "لسان".encode()
+
+
+def test_fetch_extracts_archive_member_and_checks_hash(tmp_path, monkeypatch):
+    from quran_harness import sources
+
+    archive = _toy_zip(tmp_path, {"a/book.txt": b"abc"})
+    monkeypatch.setattr(
+        sources, "read_archive_member",
+        lambda url, member: sources.zipfile.ZipFile(archive).read(member),
+    )
+    good = _source(tmp_path / "out" / "book.txt", b"abc", archive_member="a/book.txt")
+    assert fetch(good) == "ok"
+    assert is_read_only(good.path)
+    bad = _source(tmp_path / "out2" / "book.txt", b"abd", archive_member="a/book.txt")
+    assert fetch(bad) == "SHA-256 différent, fichier non conservé"
+    assert not bad.path.exists()

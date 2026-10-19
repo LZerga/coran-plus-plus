@@ -255,7 +255,8 @@ Version du code : 0.10.0 au lot A (la base doit être reconstruite).
 | OpenITI (zenodo.org/records/17767721) | CC BY-NC-SA 4.0 | taille de l'archive ; présence des dix dictionnaires de D-25 |
 | lisan345 | **non indiquée** | le SPEC dit « demander avant usage » : je ne télécharge pas sans accord |
 
-Rien n'a été téléchargé à ce jour pour le niveau 0.
+Téléchargés le 2026-10-18 avec l'accord de l'utilisateur : les dix dictionnaires (OpenITI) et
+lisan345 (voir `data/SOURCES.md`, §7 et §8). Reste à télécharger : le générateur (Qutrub).
 
 ---
 

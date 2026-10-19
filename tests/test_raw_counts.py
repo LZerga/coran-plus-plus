@@ -69,8 +69,14 @@ def test_word_counts_are_the_documented_ones(counts, sid):
     assert counts[sid].words == OBSERVED_WORDS[sid]
 
 
+# Dictionaries (lot F) have no sura / aya structure: checked in test_lexicon_sources.py.
+LEXICON_PREFIXES = ("openiti-", "lisan345-")
+
+
 def test_every_data_file_has_a_counter():
-    data_files = {sid for sid in SOURCES if not sid.endswith("-readme")}
+    data_files = {
+        sid for sid in SOURCES if not sid.endswith("-readme") and not sid.startswith(LEXICON_PREFIXES)
+    }
     assert data_files == set(COUNTERS)
 
 

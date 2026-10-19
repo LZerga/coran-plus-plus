@@ -1,6 +1,6 @@
 # SOURCES.md — Provenance des données
 
-Dernière mise à jour : 2026-10-10.
+Dernière mise à jour : 2026-10-18 (lot F : dictionnaires classiques).
 Règle : tout fichier de `data/raw/` est en lecture seule et figure ici avec URL, date,
 licence et SHA-256 (CLAUDE.md, règle 7). Le manifeste lu par le code est
 `data/sources.yaml` ; il contient les URL exactes et les empreintes de chaque fichier.
@@ -24,6 +24,8 @@ Retélécharger : `uv run python -m quran_harness sources fetch --accept-terms`
 | Textes de 8 riwāyāt (KFGQPC) | Téléchargé, vérifié | `data/raw/kfgqpc/` | **non déclarée** |
 | Document de recherche | **Introuvable en ligne** | `docs/` (vide) | — |
 | Mufahras (المعجم المفهرس) | Pas de version numérique ; à reconstruire (étape 3) | — | — |
+| Dix dictionnaires classiques de D-25 (OpenITI 2025.1.9) | Extraits de l'archive, vérifiés | `data/raw/openiti/` | CC BY-NC-SA 4.0 |
+| Racines de لسان العرب (lisan345) | Téléchargé, vérifié | `data/raw/lisan345/` | **non déclarée** (accord de l'utilisateur) |
 
 ## Comptages à la réception
 
@@ -215,3 +217,63 @@ termes de la méthode, titre partiel et « pdf ») n'ont donné aucun résultat
 correspondant. Les résultats portent sur d'autres ouvrages (Jabri, Tarabishi, thèses
 sans rapport). Rien n'a été téléchargé. Le document doit être fourni par l'équipe et
 déposé dans `docs/`.
+
+---
+
+## 7. Dictionnaires classiques — OpenITI (lot F)
+
+- **Notice** : OpenITI, *a Machine-Readable Corpus of Islamicate Texts*, version 2025.1.9
+  (30/12/2025), DOI 10.5281/zenodo.17767721, https://zenodo.org/records/17767721.
+  Dernière version publiée à la date du téléchargement.
+- **Licence** : CC BY-NC-SA 4.0 (attribution, pas d'usage commercial, partage dans les
+  mêmes conditions). Compatible avec le cadre d'usage du projet.
+- **Téléchargé le** : 2026-10-18.
+- **Méthode** : l'archive `OpenITI_data_2025-1-9.zip` fait 5,9 Go. Seuls les fichiers
+  utiles en ont été extraits, par lecture partielle HTTP (`sources.read_archive_member`).
+  Le CRC-32 de chaque fichier est contrôlé par `zipfile` à l'extraction, puis le SHA-256
+  est noté dans `data/sources.yaml` (champ `archive_member`). Le fichier de notice
+  `OpenITI_metadata_2025-1-9.tsv` est gardé tel quel (MD5 identique à celui de Zenodo).
+- **Choix de version** : pour chaque ouvrage, la version marquée « primaire »
+  (`PRIMARY_VERSION`) par OpenITI, avec sa fiche `.yml`.
+
+| Dictionnaire (D-25) | Fichier OpenITI | Mots (notice) |
+|---|---|---|
+| كتاب العين (الخليل) | `0170KhalilFarahidi.Cayn.JK000930-ara1` | 352 061 |
+| جمهرة اللغة (ابن دريد) | `0321IbnDuraydAzdi.JamharatLugha.JK007100-ara1` | 394 391 |
+| تهذيب اللغة (الأزهري) | `0370AbuMansurAzhari.TahdhibLugha.JK007040-ara1` | 1 352 464 |
+| الصحاح (الجوهري) | `0393IbnHammadJawhari.SihahTajLugha.Masaha000955Vols-ara1` | 510 108 |
+| مقاييس اللغة (ابن فارس) | `0395IbnFarisQazwini.MucjamMaqayis.JK008008-ara1` | 362 165 |
+| المحكم (ابن سيده) | `0458IbnSidaMursi.MuhkamWaMuhit.JK006962-ara1` | 1 024 053 |
+| أساس البلاغة (الزمخشري) | `0538JarAllahZamakhshari.AsasBalagha.JK007032-ara1` | 293 416 |
+| **لسان العرب (ابن منظور)** | `0711IbnManzurIfriqi.LisanCarab.Shamela0001687-ara1.mARkdown` | 3 009 681 |
+| القاموس المحيط (الفيروزآبادي) | `0817MajdDinFiruzabadi.QamusMuhit.JK001437-ara1` | 568 993 |
+| تاج العروس (الزبيدي) | `1205MurtadaZabidi.TajCarus.JK007140-ara1` | 3 882 381 |
+
+Constats à la réception :
+- **Aucun texte ne porte الشكل** (0 حركة sur tous les fichiers, versions secondaires de
+  l'archive comprises, mesuré sur leurs premiers 400 Ko). OpenITI publie des versions
+  « nettoyées ». Conséquence pour l'état « attestée » : voir QUESTIONS.md, Q33.
+- **Seul لسان العرب a ses articles balisés** (`### $ racine:` ; 9 155 articles, 9 118
+  titres distincts). Les neuf autres n'ont pas de balise d'article : le découpage
+  (SPEC §2.0, étape 1 de la méthode d'extraction) devra s'appuyer sur la mise en page
+  propre à chacun (ex. `( أكف )` dans مقاييس اللغة).
+- L'édition de لسان العرب suit Dār Ṣādir (notice OpenITI : collationnée sur la 1re édition,
+  même pagination ; « quelques sous-titres manquent »).
+
+## 8. Racines de لسان العرب — lisan345
+
+- **Dépôt** : https://github.com/git85hub/lisan345, épinglé sur le commit
+  `013c33d389c2c42f62dfeed3beaafcf7d5aad952` (2026-06-02).
+- **Licence** : **non déclarée**. Usage accepté par l'utilisateur le 2026-10-18.
+  Citation demandée par l'auteur : Elmaz, Orhan. 2026. *Lisan345*.
+  http://github.com/git85hub/lisan345.
+- **Téléchargé le** : 2026-10-18. Fichiers : `README.md`, `lisan3.csv`, `lisan4.csv`,
+  `lisan5.csv`.
+- **Contenu** : 6 529 racines trilitères, 2 551 quadrilitères, 183 quintilitères
+  (conforme au README), tirées de l'édition numérique d'al-Warrāq (alwaraq.net/book-view/89),
+  pas de celle d'OpenITI.
+- **Contrôle croisé avec OpenITI** : 8 611 racines communes ; 507 titres seulement dans
+  OpenITI, 652 racines seulement dans lisan345. Les écarts observés portent surtout sur
+  l'écriture des racines à dernière lettre faible (OpenITI `أتى`, `أخا` ; lisan345 `أتي`,
+  `أخو`). Non corrigé : constat seulement.
+
