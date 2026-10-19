@@ -1095,3 +1095,19 @@ surtout sur la dernière lettre faible (`أتى` / `أتي`, `أخا` / `أخو`
 moins 3 cases partagé avec un autre segment de la même forme) et de la covariation
 (remplissages propres à chaque forme, au moins 3 segments de chaque côté, remplissage
 dominant à 75 % au moins) acceptées telles quelles.
+
+---
+
+## Dimensions du comportement : décisions de l'utilisateur (2026-10-19)
+- **Dispersion** (1) : attribut de la forme, affiché avec elle (fiche, en-tête de comparaison),
+  séparé de l'analyse globale du comportement.
+- **Position du segment dans l'آية** (5) : secondaire ; affichée seulement au détail.
+- **Dimensions du texte (★) gardées** ; 12 (cadre immédiat) et 16 (distance des changements)
+  fusionnées en une dimension « الجوار » ; 17 (longueur des segments) retirée ; 21 (lectures)
+  devient un statut (« ثابت في كل الروايات »), pas une dimension.
+- **Noyau** toujours affiché : 4 موقع الصيغة، 7 أنواع الارتباطات، 11 التقديم والتأخير،
+  2 التكرار، 14 أنواع العلاقة بين المقاطع، الجوار. Les autres au détail.
+- Ces changements d'affichage ne sont pas encore faits dans le code.
+
+Lot F : le travail de la session du 2026-10-18 (téléchargement des dictionnaires) est
+commité (b8d0a2a) ; la session est fermée à la demande de l'utilisateur.
