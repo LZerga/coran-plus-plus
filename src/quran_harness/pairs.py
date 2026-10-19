@@ -46,6 +46,7 @@ class Cell:
     base: str
     attached: tuple[str, ...]
     roots: frozenset[str]
+    letter: bool = False  # a letter or a pronoun: no root, not a noun or a verb (the detached waw is one)
 
 
 def relation(a: Cell, b: Cell) -> tuple[str, str]:
@@ -114,6 +115,7 @@ class Signature:
     codes: dict[str, int]
     common_outside_pivot: int  # cells of E0 to E3 besides the pivot (blocks included)
     filtered: bool = False  # classed R3 at once: nothing in common besides the pivot
+    content_common_outside_pivot: int = 0  # the same, letters and pronouns left out (family links, Q36)
 
     def kinds(self) -> Counter:
         return Counter(op.kind for op in self.operations)
@@ -281,6 +283,10 @@ def compare(
 
     codes = Counter(link.code for link in links)
     common = sum(1 for link in links if link.code in COMMON) - (pivot_code in COMMON)
+    content_common = sum(
+        1 for link in links
+        if link.code in COMMON and link.a is not None and link.b is not None and link.a != pa and not a[link.a].letter
+    )  # fmt: skip
     outside_blocks = sum(1 for link in links if link.block is None and link.code in COMMON and link.a != pa)
     if settings.pivot_counts and not pivot_in_block and pivot_code in COMMON:
         outside_blocks += 1
@@ -300,6 +306,8 @@ def compare(
         len(inverted),
         dict(codes),
         common,
+        False,
+        content_common,
     )
 
 
@@ -307,13 +315,17 @@ def compare(
 
 
 _CELLS = """SELECT u.id, u.ref, w.ref, u.text_raw, u.form, u.base, u.attached,
-                   coalesce((SELECT group_concat(root, ' ') FROM unit_roots r WHERE r.unit_id = u.id), '')
+                   coalesce((SELECT group_concat(root, ' ') FROM unit_roots r WHERE r.unit_id = u.id), ''),
+                   CASE WHEN u.part = 1 THEN 'CONJ' ELSE coalesce((SELECT s.tag FROM word_segments s
+                        WHERE s.word_id = u.word_id AND s.kind = 'stem' ORDER BY s.seg_no LIMIT 1), '') END
             FROM units u JOIN words w ON w.id = u.word_id"""
+CONTENT_TAGS = frozenset({"N", "PN", "ADJ", "V", "IMPN"})  # never a "letter", even without a root
 
 
 def _cell(row) -> Cell:
-    unit_id, ref, word_ref, text, form, base, attached, roots = row
-    return Cell(unit_id, ref, word_ref, text, form, base, tuple(json.loads(attached)), frozenset(roots.split()))
+    unit_id, ref, word_ref, text, form, base, attached, roots, tag = row
+    letter = not roots and tag not in CONTENT_TAGS
+    return Cell(unit_id, ref, word_ref, text, form, base, tuple(json.loads(attached)), frozenset(roots.split()), letter)
 
 
 def cells_of_span(connection: sqlite3.Connection, sura: int, aya: int, start: int, end: int) -> list[Cell]:

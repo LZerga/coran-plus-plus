@@ -1152,3 +1152,17 @@ Entre groupes : exclusion, implication. Au moins 3 lignes (D-10) ; correction po
 multiples dans chaque matrice. La première version comptait chaque paire de colonnes : elle
 donnait des dizaines d'« équivalences » qui ne faisaient que refléter l'appartenance au
 même segment.
+
+**Q36 — décision de l'utilisateur (2026-10-19) : solution (a), appliquée.** Les حروف وضمائر
+(dont la واو mise à part) ne comptent plus parmi les éléments qui relient deux segments dans
+une famille (`families.letters_link: false`). Les types R des paires ne changent pas (ils
+comptent tous les éléments, comme le document).
+Effet mesuré :
+- يقدر, lien ≥ 1 : toujours une famille de 12 (`أحد` ~ `أحدهما` relie البلد à النحل) ; lien ≥ 2 :
+  11 + البلد isolé (avant (a), il fallait un lien ≥ 3).
+- Racine قدر : 4 formes ont désormais un usage isolé (تقدروا، قدّر، قادرين، لقادر), mais
+  **une famille regroupe encore la plupart des segments** : les mots de contenu fréquents
+  (الله، شيء، كل) les relient par enchaînement. La solution (b) — un seuil plus haut à
+  l'échelle de la racine — reste possible ; à décider au vu des essais.
+- Les covariations comptent encore les حروف (`وَ / ذَٰلِك` entre يقدر et تقدير) : (a) ne
+  portait que sur les liens des familles. À rediscuter si cela gêne la lecture.

@@ -35,6 +35,9 @@ families:               # niveau 2 : familles tracées par la typologie (SPEC §
   # Une paire R1 ou R2 relie deux segments s'ils ont au moins ce nombre d'éléments
   # communs en plus de la forme de référence. Décision de l'utilisateur (2026-10-16).   (Q23, D-08)
   link_min_common: 1
+  # Les حروف وضمائر (dont la واو mise à part) ne comptent pas parmi les éléments qui relient
+  # deux segments dans une famille. Décision de l'utilisateur (2026-10-19), solution (a).   (Q36)
+  letters_link: false
   cohesion_min: 0.5     # part minimale des paires internes en R1 ou R2   (D-15)
 
 matrix:                 # niveau 3 : matrices d'alignement (SPEC §2.5)

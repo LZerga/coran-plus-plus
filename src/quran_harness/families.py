@@ -25,11 +25,12 @@ LINKING = (pairs.R1_TOTAL, pairs.R1_PARTIAL, pairs.R2)
 class FamilySettings:
     link_min_common: int
     cohesion_min: float
+    letters_link: bool = False  # letters and pronouns count among the elements that link two segments (Q36)
 
     @classmethod
     def from_config(cls, config: dict) -> FamilySettings:
         families = config["families"]
-        return cls(families["link_min_common"], families["cohesion_min"])
+        return cls(families["link_min_common"], families["cohesion_min"], families["letters_link"])
 
 
 @dataclass(frozen=True)
@@ -71,7 +72,12 @@ class Analysis:
 
 
 def is_link(signature: pairs.Signature, settings: FamilySettings) -> bool:
-    return any(t in LINKING for t in signature.types) and signature.common_outside_pivot >= settings.link_min_common
+    return any(t in LINKING for t in signature.types) and weight(signature, settings) >= settings.link_min_common
+
+
+def weight(signature: pairs.Signature, settings: FamilySettings) -> int:
+    """Elements two segments share besides the pivot; letters and pronouns only if `letters_link` (Q36)."""
+    return signature.common_outside_pivot if settings.letters_link else signature.content_common_outside_pivot
 
 
 def rows_of_form(connection: sqlite3.Connection, form: str, scheme: str) -> list[Row]:
@@ -93,7 +99,7 @@ def rows_of_form(connection: sqlite3.Connection, form: str, scheme: str) -> list
 
 
 def trace(rows: list[Row], signatures: dict[tuple[int, int], pairs.Signature], settings: FamilySettings) -> list[Family]:
-    links = {key: signature.common_outside_pivot for key, signature in signatures.items() if is_link(signature, settings)}
+    links = {key: weight(signature, settings) for key, signature in signatures.items() if is_link(signature, settings)}
     linking_pairs = {key for key, signature in signatures.items() if any(t in LINKING for t in signature.types)}
 
     def components(edges: dict[tuple[int, int], int], members: list[int]) -> list[list[int]]:

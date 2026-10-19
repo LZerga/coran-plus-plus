@@ -15,13 +15,20 @@ NAHL, BALAD = {"16:75", "16:76"}, "90:5"
 
 
 def sig(types, common):
-    return Signature(tuple(types), (), (), (), ((), ()), 0, {}, common)
+    return Signature(tuple(types), (), (), (), ((), ()), 0, {}, common, False, common)
 
 
 def test_r3_pairs_link_nothing_and_isolated_uses_stand_alone():
     signatures = {(0, 1): sig([R1_PARTIAL], 3), (0, 2): sig([R3], 0), (1, 2): sig([R3], 0)}
     families = trace([None] * 3, signatures, FamilySettings(1, 0.5))
     assert [(f.rows, f.isolated) for f in families] == [([0, 1], False), ([2], True)]
+
+
+def test_letters_and_pronouns_link_nothing_unless_asked():
+    """Q36: a pair sharing only letters (the detached waw, على) does not join two segments."""
+    only_letters = {(0, 1): Signature((R2,), (), (), (), ((), ()), 0, {}, 2, False, 0)}
+    assert len(trace([None] * 2, only_letters, FamilySettings(1, 0.5))) == 2
+    assert len(trace([None] * 2, only_letters, FamilySettings(1, 0.5, letters_link=True))) == 1
 
 
 def test_link_needs_enough_common_elements_besides_the_pivot():
@@ -45,19 +52,19 @@ def ayas(analysis, family):
 
 @pytest.mark.parametrize("scheme", ["waqf-souple", "waqf-strict"])
 def test_yaqdir_with_the_settings_of_the_user_makes_one_family(db, scheme):
-    """Observed, not forced (QUESTIONS.md, Q23): with a link from one element besides the pivot, the
-    12 uses hold together — the detached waw, الله and شيء / يشاء join النحل to the formula of the
-    9, and على / عليه with أحد join البلد to النحل. The document's 9 / 2 / 1 is not reached."""
+    """Observed, not forced (QUESTIONS.md, Q23, Q36): with a link from one element besides the pivot,
+    letters and pronouns left out, the 12 uses still hold together — الله and شيء / يشاء join النحل
+    to the formula of the 9, and أحد / أحدهما joins البلد to النحل. The document's 9 / 2 / 1 is not reached."""
     analysis = analyse(db, YAQDIR, scheme, PAIRS, FamilySettings.from_config(load_config()))
     assert len(analysis.rows) == 12
     assert len(analysis.families) == 1 and len(analysis.families[0].rows) == 12
 
 
-@pytest.mark.parametrize("link, groups", [(1, [12]), (2, [12]), (3, [11, 1])])
+@pytest.mark.parametrize("link, groups", [(1, [12]), (2, [11, 1]), (3, [11, 1])])
 def test_yaqdir_families_under_each_link_threshold(db, link, groups):
     analysis = analyse(db, YAQDIR, "waqf-souple", PAIRS, FamilySettings(link, 0.5))
     assert [len(f.rows) for f in analysis.families] == groups
-    if link == 3:
+    if link >= 2:
         assert ayas(analysis, analysis.families[1]) == {BALAD}  # isolated use, as in the document
 
 
