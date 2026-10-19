@@ -20,6 +20,8 @@ from dataclasses import dataclass, field
 from . import families, matrix, pairs, root_identity
 from .labels import meta_line, t
 
+profile_module = None  # set lazily: profile imports this module
+
 CONTENT_TAGS = frozenset({"N", "PN", "ADJ", "V", "IMPN"})  # never a "letter", even without a root
 SAME_ROOT, OTHER_ROOT, LETTER = "a", "b", "c"
 
@@ -36,12 +38,32 @@ class Companion:
 
 @dataclass(frozen=True)
 class Sheet:
-    form: str
-    roots: tuple[str, ...]
-    box: str  # the box of the form at level 0
-    analysis: families.Analysis
-    matrices: tuple[matrix.Matrix, ...]
-    companions: tuple[Companion, ...]
+    profile: "profile_module.Profile"
+    findings: dict[str, list] | None = None  # kind -> findings of validation.py; None when the controls were not run
+
+    @property
+    def form(self) -> str:
+        return self.profile.form
+
+    @property
+    def roots(self) -> tuple[str, ...]:
+        return self.profile.roots
+
+    @property
+    def box(self) -> str:
+        return self.profile.box
+
+    @property
+    def analysis(self) -> families.Analysis:
+        return self.profile.analysis
+
+    @property
+    def matrices(self) -> tuple[matrix.Matrix, ...]:
+        return self.profile.matrices
+
+    @property
+    def companions(self) -> list[Companion]:
+        return self.profile.companions
 
     @property
     def occurrences(self) -> list[str]:
@@ -104,21 +126,36 @@ def _box(connection: sqlite3.Connection, form: str, roots: tuple[str, ...], refs
     return " ؛ ".join(f"{box} ({n})" for box, n in boxes.most_common() if n) or "—"
 
 
-def build(connection: sqlite3.Connection, form: str, scheme: str, config: dict) -> Sheet:
+def build(connection: sqlite3.Connection, form: str, scheme: str, config: dict, with_stats: bool = False) -> Sheet:
     """The sheet of a form given with its vowels as stored (`units.form`)."""
-    analysis = families.analyse(
-        connection, form, scheme, pairs.PairSettings.from_config(config), families.FamilySettings.from_config(config)
-    )
-    roots = tuple(sorted(set().union(*(row.cells[row.pivot].roots for row in analysis.rows)))) if analysis.rows else ()
-    refs = {row.cells[row.pivot].word_ref for row in analysis.rows}
-    return Sheet(
-        form=form,
-        roots=roots,
-        box=_box(connection, form, roots, refs),
-        analysis=analysis,
-        matrices=tuple(matrix.build_all(analysis, config["matrix"]["relative_min"])),
-        companions=tuple(companions(connection, analysis)),
-    )
+    from . import profile as profile_module
+    from . import validation
+
+    found = profile_module.build(connection, form, scheme, config)
+    if not with_stats:
+        return Sheet(found)
+    return Sheet(found, validate(connection, [found], scheme, config)[form])
+
+
+def validate(connection: sqlite3.Connection, profiles: list, scheme: str, config: dict) -> dict[str, dict[str, list]]:
+    """Random controls for several forms at once (associations share their shuffles)."""
+    from . import validation
+
+    settings = validation.StatsSettings.from_config(config)
+    data = validation.corpus(connection, scheme)
+    requests = [
+        validation.AssociationRequest(
+            p.form, tuple(row.cells[row.pivot].ref for row in p.rows), tuple(c.form for c in p.companions)
+        )
+        for p in profiles
+        if p.rows
+    ]
+    associations = validation.associations(data, requests, settings)
+    found = {}
+    for p in profiles:
+        constraints = [f for m in p.matrices for f in validation.constraints(p.analysis, m, settings)]
+        found[p.form] = {validation.ASSOCIATION: associations.get(p.form, []), validation.CONSTRAINT: constraints}
+    return found
 
 
 # --- Rendering (Markdown, Arabic) ---------------------------------------------------
@@ -133,21 +170,36 @@ def _refs(refs: list[str], limit: int = 12) -> str:
     return shown if len(refs) <= limit else f"{shown}، … (+{len(refs) - limit})"
 
 
+def findings_table(findings: list, with_expected: bool = True) -> list[str]:
+    head = [t("form"), t("status"), t("support")] + ([t("expected")] if with_expected else []) + [t("q_value")]
+    lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
+    for f in findings:
+        cells = [f.what + (f" ({t(f.detail)})" if f.kind == "constraint" else ""), t(f.status), str(f.support)]
+        cells += [f"{f.expected:.2f}"] if with_expected and f.expected is not None else ([""] if with_expected else [])
+        cells += [f"{f.q_value:.3f}"]
+        lines.append("| " + " | ".join(cells) + " |")
+    return lines
+
+
 def render(sheet: Sheet, meta: dict[str, str], config: dict, detail: bool = False) -> str:
-    analysis, rows = sheet.analysis, sheet.analysis.rows
+    from . import profile as profile_module
+
+    p = sheet.profile
+    analysis, rows = p.analysis, p.rows
     settings = families.FamilySettings.from_config(config)
     ayas = {ref.rsplit(":", 1)[0] for ref in sheet.occurrences}
-    positions = Counter(_position(row.pivot, len(row.cells)) for row in rows)
     lines = [
         f"# {t('sheet_title')} — {sheet.form}",
         "",
         meta_line(meta, f"{t('scheme')} : {t(analysis.scheme)}", t("form_rule")),
         "",
-        f"## {t('identity_section')}",
+        # --- أ. الوصف -------------------------------------------------------------------
+        f"## {t('describe_section')}",
         "",
         f"- {t('root')} : {'، '.join(sheet.roots) or '—'} ؛ {t('box')} : {sheet.box}",
-        f"- {t('occurrences')} : {len(rows)} ؛ {t('ayas')} : {len(ayas)} ؛ {t('segments')} : {len({r.segment_id for r in rows})}",
-        f"- {t('position')} : " + " ؛ ".join(f"{t(p)} : {positions[p]}" for p in ("début", "milieu", "fin", "seul") if positions[p]),
+        f"- {t('frequency')} : {t('occurrences')} {len(rows)} ؛ {t('ayas')} {len(ayas)} ؛ "
+        f"{t('segments')} {len({r.segment_id for r in rows})}",
+        f"- {t('dispersion')} : {len(p.suras)} {t('suras')} ؛ {profile_module.top(p.suras, 3)}",
         "",
         f"| | {t('segment')} | {t('position')} | {t('text')} |",
         "|---|---|---|---|",
@@ -155,50 +207,65 @@ def render(sheet: Sheet, meta: dict[str, str], config: dict, detail: bool = Fals
     for number, row in enumerate(rows, start=1):
         text = " ".join(f"**{c.text}**" if k == row.pivot else c.text for k, c in enumerate(row.cells))
         lines.append(f"| {number} | {row.segment_ref} | {t(_position(row.pivot, len(row.cells)))} | {text} |")
-
-    lines += ["", f"## {t('companions_section')}", "", t("stats_pending"), ""]
+    lines += ["", f"### {t('core')}", "", *profile_module.table(profile_module.described_rows(p))]
+    if detail:
+        lines += ["", f"### {t('details')}", "", *profile_module.table(profile_module.detail_rows(p))]
     for kind, title in ((SAME_ROOT, t("same_root")), (OTHER_ROOT, t("other_roots")), (LETTER, t("letters"))):
-        group = [c for c in sheet.companions if c.kind == kind]
-        lines += [f"### {title}", ""]
+        group = [c for c in p.companions if c.kind == kind]
+        lines += ["", f"### {t('companions_section')} — {title}", ""]
         if not group:
-            lines += [t("none"), ""]
+            lines.append(t("none"))
             continue
         head = [t("form"), t("segments"), t("before"), t("after")] + ([t("refs")] if detail else [])
         lines += ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
-        for c in group:
+        for c in group[: None if detail else 15]:
             cells = [c.form, str(len(c.segments)), str(c.before), str(c.after)] + ([_refs(c.refs)] if detail else [])
             lines.append("| " + " | ".join(cells) + " |")
-        lines.append("")
+        if not detail and len(group) > 15:
+            lines.append(f"\n{t('more_rows', n=len(group) - 15)}")
 
-    lines += [f"## {t('usage_section')}", ""]
-    if len(rows) < 2:
+    # --- ب. التصنيف والتمثيل ---------------------------------------------------------------
+    lines += ["", f"## {t('classify_section')}", ""]
+    if p.unique:
         lines.append(t("unique"))
-        return "\n".join(lines) + "\n"
-    types = Counter(" + ".join(s.types) for s in analysis.signatures.values())
-    real = [f for f in analysis.families if not f.isolated]
-    lines += [
-        f"- {t('link_rule', n=settings.link_min_common)} ؛ {t('cohesion_min')} : {settings.cohesion_min:.0%}",
-        f"- {t('pairs')} : {len(analysis.signatures)} ("
-        + "، ".join(f"{' + '.join(t(k) for k in kinds.split(' + '))} ({kinds}) : {n}" for kinds, n in types.most_common())
-        + ")",
-        f"- {t('families_title')} : {len(real)} ؛ {t('isolated')} : {len(analysis.families) - len(real)}",
-        "",
-        f"| {t('family')} | {t('rows')} | {t('cohesion')} | {t('cuts')} | {t('segments')} |",
-        "|---|---|---|---|---|",
-    ]
-    for number, family in enumerate(analysis.families, start=1):
-        name = t("isolated") if family.isolated else str(number)
-        cuts = "، ".join(f"{rows[i].segment_ref}–{rows[j].segment_ref}" for i, j, _ in family.cuts) or "—"
-        lines.append(
-            f"| {name} | {len(family.rows)} | {family.cohesion:.0%} | {cuts} | "
-            + "، ".join(rows[i].segment_ref for i in family.rows) + " |"
-        )
-    lines += matrix.render(analysis, list(sheet.matrices), light=not detail)
-    if detail:
-        lines += ["", f"## {t('pairs')}", ""]
-        for (i, j), signature in sorted(analysis.signatures.items()):
-            parts = pairs.describe(rows[i].cells, rows[j].cells, signature)
-            lines.append(f"- **{rows[i].segment_ref} / {rows[j].segment_ref}** : " + " ؛ ".join(f"{k} : {v}" for k, v in parts.items()))
     else:
-        lines += ["", t("pairs_detail")]
+        lines += [*profile_module.table(profile_module.classified_rows(p)), ""]
+        real = [f for f in analysis.families if not f.isolated]
+        lines += [
+            f"- {t('link_rule', n=settings.link_min_common)} ؛ {t('cohesion_min')} : {settings.cohesion_min:.0%}",
+            f"- {t('families_title')} : {len(real)} ؛ {t('isolated')} : {len(analysis.families) - len(real)}",
+            "",
+            f"| {t('family')} | {t('rows')} | {t('cohesion')} | {t('cuts')} | {t('segments')} |",
+            "|---|---|---|---|---|",
+        ]
+        for number, family in enumerate(analysis.families, start=1):
+            name = t("isolated") if family.isolated else str(number)
+            cuts = "، ".join(f"{rows[i].segment_ref}–{rows[j].segment_ref}" for i, j, _ in family.cuts) or "—"
+            lines.append(
+                f"| {name} | {len(family.rows)} | {family.cohesion:.0%} | {cuts} | "
+                + "، ".join(rows[i].segment_ref for i in family.rows) + " |"
+            )
+        lines += matrix.render(analysis, list(p.matrices), light=not detail)
+        if detail:
+            lines += ["", f"### {t('pairs')}", ""]
+            for (i, j), signature in sorted(analysis.signatures.items()):
+                parts = pairs.describe(rows[i].cells, rows[j].cells, signature)
+                lines.append(f"- **{rows[i].segment_ref} / {rows[j].segment_ref}** : " + " ؛ ".join(f"{k} : {v}" for k, v in parts.items()))
+        else:
+            lines += ["", t("pairs_detail")]
+
+    # --- ج. التحليل ---------------------------------------------------------------------
+    lines += ["", f"## {t('analyse_section')}", ""]
+    if sheet.findings is None:
+        lines.append(t("stats_not_run"))
+        return "\n".join(lines) + "\n"
+    s = config["statistics"]
+    lines += [t("stats_rule", n=s["permutations"], seed=s["seed"], alpha=s["alpha"]), ""]
+    for kind, title in (("association", t("associations_title")), ("constraint", t("constraints_title"))):
+        found = sheet.findings.get(kind, [])
+        established = [f for f in found if f.status == "established"]
+        lines += [f"### {title}", "", t("established_count", n=len(established), m=len(found) - len(established)), ""]
+        shown = found if detail else established
+        if shown:
+            lines += [*findings_table(shown, with_expected=kind == "association"), ""]
     return "\n".join(lines) + "\n"

@@ -76,7 +76,7 @@ def test_two_roots_are_never_compared(db):
 
 def test_rendering(yaqdir):
     text = render(yaqdir, META)
-    for part in ("مقارنة صيغتين", "أ. مقارنة مقاطع الصيغتين", "ب. أبعاد السلوك", "ج. أنواع استعمال مشتركة", "الحالة : ملاحظ"):
+    for part in ("مقارنة صيغتين", "أ. الوصف", "ب. التصنيف والتمثيل", "ج. التحليل", "أ. مقارنة مقاطع الصيغتين"):
         assert part in text
 
 

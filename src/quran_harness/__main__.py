@@ -10,7 +10,8 @@
     python -m quran_harness identite <racine>  # niveau 0 : هوية الجذر
     python -m quran_harness paire <passage A> <passage B> --pivot <forme>   # niveau 1
     python -m quran_harness familles <forme> [--pause strict|souple|verset]  # niveaux 1 et 2
-    python -m quran_harness comparer <forme 1> <forme 2> [--pause] [--detail]  # niveau 5
+    python -m quran_harness comparer <forme 1> <forme 2> [--pause] [--stats] [--detail]  # niveau 5
+    python -m quran_harness etude <racine> [<racine> …] [--pause] [--sans-stats] [--protocole fichier.yaml]
     python -m quran_harness decoupages
     python -m quran_harness verset <sourate:verset>
     python -m quran_harness exemples
@@ -21,6 +22,8 @@
 from __future__ import annotations
 
 import argparse
+
+import yaml
 import sqlite3
 import sys
 
@@ -262,7 +265,7 @@ def _fiche_new(args: argparse.Namespace) -> int:
     if len(candidates) > 1:
         others = "، ".join(f"{f} ({n})" for f, n in list(candidates.items())[1:])
         print(t("retained", typed=args.forme, form=form, n=candidates[form], others=others) + "\n")
-    found = sheet.build(connection, form, selected_scheme(config), config)
+    found = sheet.build(connection, form, selected_scheme(config), config, with_stats=args.stats)
     _write(sheet.render(found, meta, config, detail=args.detail), args.sortie)
     return 0
 
@@ -288,12 +291,42 @@ def _comparer(args: argparse.Namespace) -> int:
             print(t("retained", typed=typed, form=form, n=candidates[form], others=others))
         chosen.append(form)
     try:
-        found = comparison.compare_forms(connection, *chosen, selected_scheme(config), config)
+        found = comparison.compare_forms(connection, *chosen, selected_scheme(config), config, with_stats=args.stats)
     except ValueError:
         print(t("not_same_root"))
         return 1
     _write(comparison.render(found, meta, detail=args.detail), args.sortie)
     return 0
+
+
+def _etude(args: argparse.Namespace) -> int:
+    from pathlib import Path
+
+    from . import study
+    from .labels import t
+    from .sources import PROJECT_ROOT
+
+    connection, _ = _open_database()
+    protocol = {}
+    if args.protocole:
+        with open(args.protocole, encoding="utf-8") as f:
+            protocol = yaml.safe_load(f) or {}
+    roots = args.racines or protocol.get("racines", [])
+    if not roots:
+        print(t("empty_query"))
+        return 1
+    pause = args.pause or protocol.get("pause")
+    with_stats = not args.sans_stats and protocol.get("statistiques", True)
+    out = Path(args.sortie or protocol.get("sortie") or PROJECT_ROOT / "sorties")
+    status = 0
+    for root in roots:
+        config = with_pause(load_config(), pause)
+        try:
+            study.run(connection, root, config, out, with_stats=with_stats)
+        except ValueError:
+            print(f"{t('no_root')} ({root})")
+            status = 1
+    return status
 
 
 def _forme(args: argparse.Namespace) -> int:
@@ -417,6 +450,7 @@ def main(argv: list[str] | None = None) -> int:
     p_fiche = sub.add_parser("fiche", help="بطاقة الصيغة : الهوية، الارتباطات، المقارنات، أنواع الاستعمال، المصفوفات")
     p_fiche.add_argument("forme")
     p_fiche.add_argument("--pause", choices=pauses, default=pause_default, help="découpage en segments")
+    p_fiche.add_argument("--stats", action="store_true", help="contrôle aléatoire (environ 30 s)")
     p_fiche.add_argument("--detail", action="store_true", help="tout afficher : références, paires, colonnes masquées")
     p_fiche.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
     p_fiche.set_defaults(func=_fiche_new)
@@ -425,9 +459,18 @@ def main(argv: list[str] | None = None) -> int:
     p_comparer.add_argument("forme1")
     p_comparer.add_argument("forme2")
     p_comparer.add_argument("--pause", choices=pauses, default=pause_default, help="découpage en segments")
+    p_comparer.add_argument("--stats", action="store_true", help="contrôle aléatoire (environ 30 s)")
     p_comparer.add_argument("--detail", action="store_true", help="tout afficher")
     p_comparer.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
     p_comparer.set_defaults(func=_comparer)
+
+    p_etude = sub.add_parser("etude", help="دراسة كاملة لجذر أو أكثر : كل المراحل، ثم تقرير في مجلد")
+    p_etude.add_argument("racines", nargs="*", help="un ou plusieurs racines (une étude par racine)")
+    p_etude.add_argument("--pause", choices=pauses, default=None, help="découpage en segments")
+    p_etude.add_argument("--sans-stats", action="store_true", help="sans contrôle aléatoire (plus rapide)")
+    p_etude.add_argument("--protocole", help="fichier YAML : racines, pause, statistiques, sortie")
+    p_etude.add_argument("--sortie", help="dossier des résultats (par défaut : sorties/)")
+    p_etude.set_defaults(func=_etude)
 
     args = parser.parse_args(argv)
     return args.func(args)

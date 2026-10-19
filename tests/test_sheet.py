@@ -33,7 +33,7 @@ def test_companions_in_three_kinds(yaqdir):
 
 def test_light_sheet_hides_detail_and_the_full_one_shows_it(yaqdir):
     light = render(yaqdir, META, CONFIG)
-    for section in ("أ. الهوية", "ب. الارتباطات", "ج. أنواع الاستعمال", "القالب", "الحالة : ملاحظ"):
+    for section in ("أ. الوصف", "ب. التصنيف والتمثيل", "ج. التحليل", "السلوك : النواة", "القالب", "لم تشغل"):
         assert section in light
     assert "أعمدة لا يملؤها إلا سطر واحد أخفيت" in light and "13:26:1-6 / 16:75:1-19" not in light
     full = render(yaqdir, META, CONFIG, detail=True)

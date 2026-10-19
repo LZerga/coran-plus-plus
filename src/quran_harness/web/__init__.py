@@ -77,7 +77,7 @@ def create_app(db_path: Path) -> FastAPI:
             connection.close()
 
     @app.get("/api/fiche")
-    def fiche(q: str, pause: str | None = None, detail: bool = False) -> dict:
+    def fiche(q: str, pause: str | None = None, detail: bool = False, stats: bool = False) -> dict:
         """The sheet of a form. Typed without vowels, the most frequent form is shown and the others listed."""
         typed = required(q)
         config = configured(pause)
@@ -87,7 +87,7 @@ def create_app(db_path: Path) -> FastAPI:
             if not candidates:
                 raise HTTPException(404, t("no_occurrence"))
             form = next(iter(candidates))
-            found = sheet.build(connection, form, selected_scheme(config), config)
+            found = sheet.build(connection, form, selected_scheme(config), config, with_stats=stats)
             return {
                 "form": form,
                 "candidates": [{"form": f, "occurrences": n} for f, n in candidates.items()],
@@ -97,7 +97,7 @@ def create_app(db_path: Path) -> FastAPI:
             connection.close()
 
     @app.get("/api/comparer")
-    def comparer(a: str, b: str, pause: str | None = None, detail: bool = False) -> dict:
+    def comparer(a: str, b: str, pause: str | None = None, detail: bool = False, stats: bool = False) -> dict:
         """Two forms of the same root compared (level 5). Typed without vowels: the most frequent form of each."""
         config = configured(pause)
         connection, meta = connect()
@@ -113,7 +113,7 @@ def create_app(db_path: Path) -> FastAPI:
                     notes.append(t("retained", typed=typed, form=form, n=candidates[form], others=others))
                 chosen.append(form)
             try:
-                found = comparison.compare_forms(connection, *chosen, selected_scheme(config), config)
+                found = comparison.compare_forms(connection, *chosen, selected_scheme(config), config, with_stats=stats)
             except ValueError:
                 raise HTTPException(400, t("not_same_root")) from None
             return {"forms": chosen, "notes": notes, "html": to_html(comparison.render(found, meta, detail=detail))}

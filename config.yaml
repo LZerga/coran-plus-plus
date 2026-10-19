@@ -44,6 +44,10 @@ comparison:             # niveau 5 : comparaison de deux formes de la même raci
   formula_min_block: 3  # un segment est dans une formule s'il partage un bloc d'au moins 3 cases
   support_min: 3        # covariation retenue si chaque forme la porte sur au moins 3 segments   (D-10)
 
+study:                  # commande etude : analyse complète d'une racine
+  pair_min_occurrences: 1     # formes comparées deux à deux à partir de ce nombre d'occurrences (D-18 : toutes)
+  detail_min_occurrences: 3   # une comparaison a son propre fichier si chaque forme a au moins ce nombre
+
 statistics:             # (Q10) ; contrôle aléatoire, refait sur les cases au lot E
   seed: 20261010
   permutations: 1000

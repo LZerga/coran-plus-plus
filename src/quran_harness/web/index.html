@@ -92,6 +92,7 @@
     <label>الصيغة <input class="word" type="text" name="q" value="يقدر" required></label>
     <label>التقطيع <select name="pause"></select></label>
     <label class="check"><input type="checkbox" name="detail"> كل التفاصيل</label>
+    <label class="check"><input type="checkbox" name="stats"> اختبار بالخلط العشوائي (نصف دقيقة)</label>
     <button class="go" type="submit">عرض البطاقة</button>
     <span class="tools"><button type="button" class="print">طباعة / PDF</button></span>
   </form>
@@ -101,6 +102,7 @@
     <label>الصيغة الثانية <input class="word" type="text" name="b" value="قدير" required></label>
     <label>التقطيع <select name="pause"></select></label>
     <label class="check"><input type="checkbox" name="detail"> كل التفاصيل</label>
+    <label class="check"><input type="checkbox" name="stats"> اختبار بالخلط العشوائي</label>
     <button class="go" type="submit">قارن الصيغتين</button>
     <span class="tools"><button type="button" class="print">طباعة / PDF</button></span>
   </form>
@@ -192,7 +194,7 @@ forms.racine.addEventListener("submit", async (event) => {
 forms.fiche.addEventListener("submit", async (event) => {
   event.preventDefault();
   const f = forms.fiche;
-  const body = await ask("/api/fiche", { q: f.q.value, pause: f.pause.value, detail: f.detail.checked },
+  const body = await ask("/api/fiche", { q: f.q.value, pause: f.pause.value, detail: f.detail.checked, stats: f.stats.checked },
                          $("button.go", f));
   if (!body) return;
   display(body.html);
@@ -203,7 +205,7 @@ forms.fiche.addEventListener("submit", async (event) => {
 forms.comparer.addEventListener("submit", async (event) => {
   event.preventDefault();
   const f = forms.comparer;
-  const body = await ask("/api/comparer", { a: f.a.value, b: f.b.value, pause: f.pause.value, detail: f.detail.checked },
+  const body = await ask("/api/comparer", { a: f.a.value, b: f.b.value, pause: f.pause.value, detail: f.detail.checked, stats: f.stats.checked },
                          $("button.go", f));
   if (!body) return;
   $("#forms").innerHTML = "";

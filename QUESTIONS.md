@@ -1111,3 +1111,44 @@ dominant à 75 % au moins) acceptées telles quelles.
 
 Lot F : le travail de la session du 2026-10-18 (téléchargement des dictionnaires) est
 commité (b8d0a2a) ; la session est fermée à la demande de l'utilisateur.
+
+---
+
+## Lot E (contrôle aléatoire), fiches en trois couches, commande `etude` (2026-10-19)
+
+Ordre confirmé par l'utilisateur : document de méthode, fiches en trois couches, lot E,
+processus d'étude. Réalisé :
+
+- `docs/DIMENSIONS.md` : les trois couches (وصف، تصنيف، تحليل) et les dimensions.
+- `profile.py` : le profil d'une forme (attributs, noyau, détail), commun à la fiche et à la
+  comparaison. Fiche et comparaison sont maintenant en trois parties.
+- `validation.py` (lot E) : associations des compagnons (cases mélangées entre segments,
+  taille des segments gardée, 1 000 mélanges, contrôles « corpus » et « sourate »,
+  Benjamini-Hochberg) ; contraintes entre colonnes facultatives d'une matrice (permutation
+  entre lignes, correction dans la matrice) ; covariations entre deux formes (permutation
+  des formes entre lignes). Options `--stats` (fiche, comparer) et case à cocher dans le web.
+- `study.py`, commande `etude <racine…>` : toutes les étapes, puis un dossier
+  `sorties/<racine>/<date>_<pause>_<stats>_<empreinte>/` avec rapport (analyse d'abord),
+  identité de la racine, une fiche par forme, comparaisons des formes, CSV, journal
+  (réglages, version, hashes des sources, durées). Reprise après interruption
+  (`etat.sqlite`). قدر : 46 formes, 1 035 paires de formes, 55 s avec le contrôle aléatoire.
+
+### Q36 — À l'échelle de la racine, un seul « type d'usage » réunit tout
+Avec le réglage de lien choisi (Q23 : un élément commun en plus de la forme, حروف وضمائر
+comprises), les familles de la racine قدر forment **un seul groupe de 132 segments** :
+presque tous les segments partagent au moins `وَ`, `ٱللَّه` ou `عَلَى`. Les familles de la
+racine (SPEC §2.12-e) n'apprennent donc rien en l'état ; le rapport le signale.
+Le même effet touche les covariations entre formes rares (elles sont cherchées dans ces
+grandes familles mixtes).
+- Pistes, **non appliquées** (décision de l'auteur) : (a) ne pas compter les حروف وضمائر
+  parmi les éléments communs qui relient deux segments dans une famille — comme la
+  comparaison des formes les compte déjà à part ; (b) un seuil plus haut à l'échelle de la
+  racine qu'à l'échelle d'une forme.
+
+### Q37 — Contraintes entre colonnes : ce que j'ai fixé
+Des colonnes présentes exactement dans les mêmes lignes forment un groupe : adjacentes,
+c'est un bloc, pas une contrainte ; séparées, c'est une équivalence (comme من عباده … له).
+Entre groupes : exclusion, implication. Au moins 3 lignes (D-10) ; correction pour tests
+multiples dans chaque matrice. La première version comptait chaque paire de colonnes : elle
+donnait des dizaines d'« équivalences » qui ne faisaient que refléter l'appartenance au
+même segment.
