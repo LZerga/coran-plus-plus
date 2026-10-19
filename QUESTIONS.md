@@ -1197,3 +1197,15 @@ Pour قلب, 97 associations sont « مثبت إحصائيا », dont 61 sur 2 s
 (`statistics.min_cooccurrence: 2`). Un mot rare présent deux fois avec la forme passe le
 contrôle (l'attendu est proche de 0). C'est statistiquement exact, mais cela noie la lecture.
 Avec un minimum de 3 segments : 36 associations. Défaut actuel : 2 (Q10) ; à décider.
+
+**Q39 — décision de l'utilisateur (2026-10-19)** : minimum de 3 segments pour une
+association (`statistics.min_cooccurrence: 3`). قلب : 36 associations établies (au lieu de 97).
+
+### Q23 revu sur قلوبهم (mesuré le 2026-10-19, rien n'est changé)
+| Lien (éléments communs hors pivot, sans حروف) | Familles | Usages isolés |
+|---|---|---|
+| ≥ 1 (réglage actuel) | une de 41 (matrice de 100 colonnes, 550 écarts sur 820 paires) | 1 |
+| ≥ 2 | 32, 3, 2 | 5 |
+| ≥ 3 | 14, 3 | 25 |
+Avec un lien ≥ 3, une famille de 3 segments a un gabarit net :
+`{وَ|إِنّا} جَعَلْنَا عَلَى قُلُوبهِم أَكِنَّة أَن يَفْقَهُوه وَ فِى ءَاذَانهِم وَقْرا`.

@@ -58,4 +58,4 @@ statistics:             # (Q10) ; contrôle aléatoire, refait sur les cases au 
   # segments. corpus = dans tout le texte (SPEC) ; sura = à l'intérieur de chaque sourate.
   controls: [corpus, sura]
   alpha: 0.05           # seuil, appliqué après correction pour tests multiples
-  min_cooccurrence: 2   # en dessous, l'association est dite trop rare pour conclure
+  min_cooccurrence: 3   # en dessous, trop rare pour conclure. Décision de l'utilisateur (2026-10-19)   (Q39)
