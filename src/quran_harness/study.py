@@ -29,7 +29,7 @@ from pathlib import Path
 
 import yaml
 
-from . import __version__, comparison, families, matrix, root_identity, sheet, validation
+from . import __version__, comparison, concepts, families, frames, matrix, root_identity, sheet, validation
 from . import profile as profiles
 from .labels import meta_line, t
 from .segmentation import selected_scheme
@@ -175,12 +175,20 @@ def run(connection: sqlite3.Connection, root: str, config: dict, out_root: Path,
     step("5b أنواع استعمال الجذر")
     root_families = _root_families(connection, [built[f] for f in forms], config)
 
+    # Frames and slots (short window), formal concepts ---------------------------------------------
+    step("القوالب والمفاهيم")
+    root_frames = frames.build(connection, found.root, scheme, config["statistics"]["alpha"])
+    context = concepts.table([built[f] for f in forms])
+    root_concepts = concepts.concepts(context)
+
     # Tables, report, journal --------------------------------------------------------------------
     step("التقرير")
     _write_csv(folder, forms, built, pair_rows, findings)
     informative = _informative_dimensions([built[f] for f in forms if len(built[f].rows) >= 3])
-    report = _report(found, forms, built, findings, pair_rows, root_families, informative, meta, config, scheme, with_stats)
+    report = _report(found, forms, built, findings, pair_rows, root_families, informative, meta, config, scheme, with_stats,
+                     root_frames, root_concepts, context)
     report += _file_list(folder, forms, built)
+    (folder / "01_القوالب.md").write_text(frames.render(root_frames, meta, detail=True), encoding="utf-8")
     (folder / "00_التقرير.md").write_text(report, encoding="utf-8")
     timings["fin"] = time.time()
     _journal(folder, found.root, config, meta, connection, timings, started, with_stats, len(forms), total_pairs)
@@ -262,7 +270,42 @@ def _write_csv(folder: Path, forms, built, pair_rows, findings) -> None:
                     out.writerow([form, x.kind, x.what, x.detail, x.support, x.expected, x.p_value, x.q_value, x.status])
 
 
-def _report(found, forms, built, findings, pair_rows, root_families, informative, meta, config, scheme, with_stats) -> str:
+def _synthesis(forms, built, findings, pair_rows, root_frames, root_concepts) -> list[str]:
+    """The clearest regularities of the root, as short descriptive sentences, each with its status (Q41)."""
+    from collections import Counter as _Counter
+
+    def top(counter, n=3):
+        return "، ".join(f"{k} ({v})" for k, v in _Counter(counter).most_common(n) if k != frames.EDGE)
+
+    items: list[tuple[str, str]] = []
+    for side, branches in (("after", root_frames.continuations), ("before", root_frames.antecedents)):
+        chosen = [b for b in branches if b.cell != frames.EDGE and b.established and b.count >= 3]
+        for b in sorted(chosen, key=lambda b: (b.expected / b.count, -b.count))[:3]:
+            items.append((t(f"syn_frame_{side}", cell=b.cell, n=b.count, total=root_frames.occurrences,
+                            expected=f"{b.expected:.2f}", second=top(b.second), forms=top(b.forms)), t("established")))  # fmt: skip
+    for s in [s for s in root_frames.slots if sum(s.fillers.values()) >= 3][:2]:
+        items.append((t("syn_slot", before=s.before, after=s.after, n=sum(s.fillers.values()), forms=top(s.fillers)), t("observed")))
+    formulas = [built[f] for f in forms if len(built[f].rows) >= 3 and built[f].formula_rows * 2 >= len(built[f].rows)]
+    for p in sorted(formulas, key=lambda p: -p.formula_rows)[:2]:
+        items.append((t("syn_formula", form=p.form, n=p.formula_rows, total=len(p.rows), block=p.formula_block), t("described")))
+    for r in pair_rows:
+        for c in r["covariations"]:
+            if c["status"] == validation.ESTABLISHED and sum(1 for x in items if x[0].startswith("«")) < 2:
+                items.append((t("syn_covariation", a=r["a"], x=c["a"], b=r["b"], y=c["b"]), t("established")))
+    associations = [(form, x) for form in forms for x in findings.get(form, {}).get(validation.ASSOCIATION, [])
+                    if x.status == validation.ESTABLISHED and x.support >= 3]  # fmt: skip
+    for form, x in sorted(associations, key=lambda fx: -fx[1].support)[:2]:
+        items.append((t("syn_association", form=form, companion=x.what, n=x.support), t("established")))
+    shared = [c for c in root_concepts if len(c.extent) >= 2 and len(c.intent) >= 2]
+    for c in shared[:1]:
+        items.append((t("syn_concept", forms="، ".join(sorted(c.extent)), companions="، ".join(sorted(c.intent))), t("described")))
+    lines = [f"## {t('synthesis_title')}", "", t("synthesis_note"), ""]
+    lines += [f"{k}. {text} — **{status}**" for k, (text, status) in enumerate(items[:10], start=1)] or [t("none")]
+    return lines + [""]
+
+
+def _report(found, forms, built, findings, pair_rows, root_families, informative, meta, config, scheme, with_stats,
+            root_frames=None, root_concepts=None, context=None) -> str:  # fmt: skip
     lines = [
         f"# {t('study_title')} — {found.root}",
         "",
@@ -272,6 +315,8 @@ def _report(found, forms, built, findings, pair_rows, root_families, informative
         f"- {t('study_files')}",
         "",
     ]
+    if root_frames is not None:
+        lines += _synthesis(forms, built, findings, pair_rows, root_frames, root_concepts or [])
     # ج. Analysis first (docs/DIMENSIONS.md, rule 4): established results, each with its sheet.
     lines += [f"## {t('analyse_section')}", ""]
     if not with_stats:
@@ -296,6 +341,8 @@ def _report(found, forms, built, findings, pair_rows, root_families, informative
             lines += [f"| {r['a']} | {r['b']} | {c['a']} / {c['b']} | {c['p']:.3f} |" for r, c in cov]
         else:
             lines.append(t("none"))
+    if root_frames is not None:
+        lines += ["", f"### {t('frames_title')}", "", *frames.render_section(root_frames)]
     lines += ["", f"### {t('informative_title')}", "", f"| {t('dimension')} | {t('distinct_values')} |", "|---|---|"]
     names = {"positions": t("position"), "order": t("order"), "left": t("frame_before"), "right": t("frame_after"), "repetition": t("repetition")}
     lines += [f"| {names[k]} | {v} |" for k, v in informative.items()]
@@ -310,6 +357,8 @@ def _report(found, forms, built, findings, pair_rows, root_families, informative
         lines.append(f"| {r['a']} | {r['b']} | {r['pairs']} | {r['case_a']} | {r['case_b']} | {r['case_c']} | {r['mixed_families']} |")
     if len(ranked) > 40:
         lines.append(f"\n{t('more_rows', n=len(ranked) - 40)} (paires_formes.csv)")
+    if context is not None:
+        lines += ["", f"### {t('concepts_title')}", "", *concepts.render_section(root_concepts, context)]
     lines += ["", f"### {t('root_families_title')}", ""]
     shared = [g for g in root_families["families"] if len(g["forms"]) >= 2]
     lines += [f"| {t('forms')} | {t('rows')} | {t('cohesion')} | {t('template')} |", "|---|---|---|---|"]
@@ -342,7 +391,8 @@ def _report(found, forms, built, findings, pair_rows, root_families, informative
 
 def _file_list(folder: Path, forms, built) -> str:
     """Links to the sheets and the comparisons, opened from the report (web tab الدراسات)."""
-    lines = ["", f"## {t('files_title')}", "", f"- [{t('identity')}](00_هوية_الجذر.md)", f"- [Journal](journal.md)", "",
+    lines = ["", f"## {t('files_title')}", "", f"- [{t('identity')}](00_هوية_الجذر.md)",
+             f"- [{t('frames_title')}](01_القوالب.md)", f"- [Journal](journal.md)", "",
              f"### {t('sheets_title')}", ""]  # fmt: skip
     for number, form in enumerate(forms, start=1):
         name = f"{number:03d}_{_file_name(form)}.md"

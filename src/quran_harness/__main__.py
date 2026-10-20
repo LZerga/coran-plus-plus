@@ -11,6 +11,7 @@
     python -m quran_harness paire <passage A> <passage B> --pivot <forme>   # niveau 1
     python -m quran_harness familles <forme> [--pause strict|souple|verset]  # niveaux 1 et 2
     python -m quran_harness comparer <forme 1> <forme 2> [--pause] [--stats] [--detail]  # niveau 5
+    python -m quran_harness cadres <racine> [--pause] [--detail]   # القوالب والخانات
     python -m quran_harness etude <racine> [<racine> …] [--pause] [--sans-stats] [--protocole fichier.yaml]
     python -m quran_harness decoupages
     python -m quran_harness verset <sourate:verset>
@@ -329,6 +330,24 @@ def _etude(args: argparse.Namespace) -> int:
     return status
 
 
+def _cadres(args: argparse.Namespace) -> int:
+    from . import frames
+    from .index import search_key
+    from .labels import t
+    from .segmentation import selected_scheme
+    from . import alt_roots
+
+    connection, meta = _open_database()
+    config = with_pause(load_config(), args.pause)
+    root = alt_roots.fold_hamza(search_key(args.racine))
+    found = frames.build(connection, root, selected_scheme(config), config["statistics"]["alpha"])
+    if not found.occurrences:
+        print(t("no_root"))
+        return 1
+    _write(frames.render(found, meta, detail=args.detail), args.sortie)
+    return 0
+
+
 def _forme(args: argparse.Namespace) -> int:
     from .labels import meta_line, t
     from .units import FormSettings, by_form, occurrences_of_form
@@ -463,6 +482,13 @@ def main(argv: list[str] | None = None) -> int:
     p_comparer.add_argument("--detail", action="store_true", help="tout afficher")
     p_comparer.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
     p_comparer.set_defaults(func=_comparer)
+
+    p_cadres = sub.add_parser("cadres", help="القوالب والخانات : ما يأتي قبل صيغ الجذر وبعدها مباشرة")
+    p_cadres.add_argument("racine")
+    p_cadres.add_argument("--pause", choices=pauses, default=pause_default, help="découpage en segments")
+    p_cadres.add_argument("--detail", action="store_true", help="tout afficher")
+    p_cadres.add_argument("--sortie", help="fichier où écrire le résultat (UTF-8)")
+    p_cadres.set_defaults(func=_cadres)
 
     p_etude = sub.add_parser("etude", help="دراسة كاملة لجذر أو أكثر : كل المراحل، ثم تقرير في مجلد")
     p_etude.add_argument("racines", nargs="*", help="un ou plusieurs racines (une étude par racine)")

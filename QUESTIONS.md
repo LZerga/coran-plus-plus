@@ -1221,3 +1221,38 @@ L'utilisateur n'arrivait pas à ouvrir les fiches (noms de fichiers avec voyelle
 (`001_قلوبهم.md`) ; le rapport finit par la liste des fichiers, en liens ; onglet web
 « الدراسات » : choisir une étude, ouvrir son rapport, cliquer vers chaque fiche ou
 comparaison, bouton « رجوع إلى التقرير ».
+
+---
+
+## Cadres et cases, synthèse, concepts (2026-10-20)
+
+Constat partagé avec l'utilisateur : la démarche produisait des régularités, mais les tableaux
+les noyaient ; les formes émiettées (pronoms et lettres collés, conjugaisons) ont trop peu
+d'occurrences pour qu'une forme seule montre quelque chose. Décisions de l'utilisateur :
+une vue « cadres et cases » à l'échelle de la racine, une synthèse en tête du rapport, une
+analyse formelle de concepts. Le segment reste l'unité ; la **fenêtre courte** (1 à 2 cases
+de part et d'autre) est une lecture de plus.
+
+- `frames.py`, commande `cadres <racine>` : ce qui vient juste après et juste avant toutes
+  les formes de la racine (arbre : première case → deuxième case), cases « avant ___ après »
+  remplies par des formes de la racine, ouverture de la case après chaque forme. Contrôle :
+  loi de Poisson de moyenne (occurrences de la racine) × (part du mot dans le texte),
+  correction de Benjamini-Hochberg (Q40).
+- `concepts.py` : analyse formelle de concepts sur le tableau formes (≥ 2 occurrences) ×
+  compagnons (sans حروف وضمائر, ≥ 2 segments).
+- Synthèse automatique en tête du rapport : au plus 10 phrases descriptives, chacune avec son
+  statut (Q41). Fichier `01_القوالب.md` dans chaque étude.
+
+قلب : مَرَض après une forme de la racine 12 fois sur 168 (0,02 attendu) ; فِى avant 40 fois
+(2,35 attendu) ; على avant 23 fois ; القالب « فِى ___ مَرَض » rempli 11 fois.
+
+### Q40 — Contrôle des cadres : Poisson plutôt que mélange
+Pour la case juste après (ou avant) la racine, le hasard est modélisé par une loi de Poisson
+(mots placés au hasard, fréquences gardées), sans mélange ; c'est rapide et exact pour ce
+cas. Les cases « avant ___ après » ne sont pas encore testées (statut « ملاحظ »).
+
+### Q41 — Choix des phrases de la synthèse
+Ordre fixe et transparent : jusqu'à 3 cadres établis après et 3 avant (au moins 3
+occurrences, les plus éloignés du hasard d'abord), 2 cases, 2 formules (forme d'au moins 3
+occurrences dont la moitié des segments répète un bloc), 2 covariations établies,
+2 associations établies, 1 concept ; au plus 10 phrases. À revoir avec l'auteur.
