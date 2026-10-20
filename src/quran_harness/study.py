@@ -79,6 +79,13 @@ def _finding(d: dict) -> validation.Finding:
     return validation.Finding(d["kind"], d["what"], d["detail"], d["support"], d["expected"], d["p"], d["q"], d["status"])
 
 
+def _file_name(form: str) -> str:
+    """A file name for a form: its letters without vowels (easier to open than a vocalised name)."""
+    from .normalize import Level, normalize
+
+    return _safe(normalize(form, Level.NO_VOWELS).replace("ٱ", "ا"))
+
+
 def _safe(name: str) -> str:
     return "".join(ch for ch in name if ch.isalnum() or ch in "-_") or "x"
 
@@ -128,7 +135,7 @@ def run(connection: sqlite3.Connection, root: str, config: dict, out_root: Path,
         findings = {form: {kind: [_finding(d) for d in items] for kind, items in kinds.items()} for form, kinds in saved.items()}
     for number, form in enumerate(forms, start=1):
         card = sheet.Sheet(built[form], findings.get(form) if with_stats else None)
-        (folder / "fiches" / f"{number:03d}_{form}.md").write_text(sheet.render(card, meta, config), encoding="utf-8")
+        (folder / "fiches" / f"{number:03d}_{_file_name(form)}.md").write_text(sheet.render(card, meta, config), encoding="utf-8")
 
     # 5a. Every pair of forms -------------------------------------------------------------------
     step("5a مقارنة الصيغ")
@@ -157,7 +164,7 @@ def run(connection: sqlite3.Connection, root: str, config: dict, out_root: Path,
                     ],
                 }  # fmt: skip
                 if min(len(built[form_a].rows), len(built[form_b].rows)) >= study_settings.detail_min_occurrences:
-                    name = f"{forms.index(form_a) + 1:03d}-{forms.index(form_b) + 1:03d}_{form_a}_{form_b}.md"
+                    name = f"{forms.index(form_a) + 1:03d}-{forms.index(form_b) + 1:03d}_{_file_name(form_a)}_{_file_name(form_b)}.md"
                     (folder / "comparaisons" / name).write_text(comparison.render(found_pair, meta), encoding="utf-8")
                 state.put(key, summary)
             pair_rows.append(summary)
@@ -173,6 +180,7 @@ def run(connection: sqlite3.Connection, root: str, config: dict, out_root: Path,
     _write_csv(folder, forms, built, pair_rows, findings)
     informative = _informative_dimensions([built[f] for f in forms if len(built[f].rows) >= 3])
     report = _report(found, forms, built, findings, pair_rows, root_families, informative, meta, config, scheme, with_stats)
+    report += _file_list(folder, forms, built)
     (folder / "00_التقرير.md").write_text(report, encoding="utf-8")
     timings["fin"] = time.time()
     _journal(folder, found.root, config, meta, connection, timings, started, with_stats, len(forms), total_pairs)
@@ -329,6 +337,23 @@ def _report(found, forms, built, findings, pair_rows, root_families, informative
             f"| {form} | {len(p.rows)} | {len(p.suras)} | {t(_dominant(p.positions))} | {_dominant(p.left)} | "
             f"{_dominant(p.right)} | {profiles.share(p.formula_rows, len(p.rows))} |"
         )
+    return "\n".join(lines) + "\n"
+
+
+def _file_list(folder: Path, forms, built) -> str:
+    """Links to the sheets and the comparisons, opened from the report (web tab الدراسات)."""
+    lines = ["", f"## {t('files_title')}", "", f"- [{t('identity')}](00_هوية_الجذر.md)", f"- [Journal](journal.md)", "",
+             f"### {t('sheets_title')}", ""]  # fmt: skip
+    for number, form in enumerate(forms, start=1):
+        name = f"{number:03d}_{_file_name(form)}.md"
+        lines.append(f"- [{form}](fiches/{name}) — {t('occurrences')} {len(built[form].rows)}")
+    comparisons = sorted((folder / "comparaisons").glob("*.md"))
+    if comparisons:
+        lines += ["", f"### {t('comparisons_title')}", ""]
+        for path in comparisons:
+            first, second = path.stem.split("_", 1)[0].split("-")
+            label = f"{forms[int(first) - 1]} / {forms[int(second) - 1]}"
+            lines.append(f"- [{label}](comparaisons/{path.name})")
     return "\n".join(lines) + "\n"
 
 

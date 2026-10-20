@@ -1,8 +1,8 @@
 """The Markdown the command line prints, turned into HTML for the web page.
 
 One rendering for both (the page shows exactly what the command prints). Only the
-subset the harness writes is handled: headings, lists, tables, paragraphs, **bold**
-and `code`. Everything is escaped first; the only HTML kept is the <br> of table cells.
+subset the harness writes is handled: headings, lists, tables, paragraphs, **bold**,
+`code` and [links](path). Everything is escaped first; the only HTML kept is the <br> of table cells.
 """
 
 from __future__ import annotations
@@ -12,11 +12,13 @@ import re
 
 _BOLD = re.compile(r"\*\*(.+?)\*\*")
 _CODE = re.compile(r"`(.+?)`")
+_LINK = re.compile(r"\[([^\]]+)\]\(([^)\s]+)\)")
 
 
 def _inline(text: str) -> str:
     text = html.escape(text, quote=False).replace("&lt;br&gt;", "<br>")
     text = _CODE.sub(r"<code>\1</code>", text)
+    text = _LINK.sub(lambda m: f'<a href="{html.escape(m.group(2))}" data-file="{html.escape(m.group(2))}">{m.group(1)}</a>', text)
     return _BOLD.sub(r"<strong>\1</strong>", text)
 
 

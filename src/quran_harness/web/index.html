@@ -76,11 +76,19 @@
 </header>
 <main>
   <div class="tabs" role="tablist">
+    <button role="tab" data-tab="etudes" aria-selected="false">الدراسات</button>
     <button role="tab" data-tab="racine" aria-selected="true">الجذر</button>
     <button role="tab" data-tab="fiche" aria-selected="false">الصيغة</button>
     <button role="tab" data-tab="comparer" aria-selected="false">مقارنة صيغتين</button>
     <button role="tab" data-tab="paire" aria-selected="false">المقارنة الثنائية</button>
   </div>
+
+  <form id="form-etudes" data-tab="etudes" hidden>
+    <label>الدراسات المنجزة <select name="study"></select></label>
+    <button class="go" type="submit">فتح التقرير</button>
+    <span class="tools"><button type="button" class="back" hidden>رجوع إلى التقرير</button>
+      <button type="button" class="print">طباعة / PDF</button></span>
+  </form>
 
   <form id="form-racine" data-tab="racine">
     <label>الجذر <input class="word" type="text" name="q" value="قدر" required></label>
@@ -122,7 +130,7 @@
 </main>
 <script>
 const $ = (selector, root = document) => root.querySelector(selector);
-const forms = { racine: $("#form-racine"), fiche: $("#form-fiche"), comparer: $("#form-comparer"), paire: $("#form-paire") };
+const forms = { etudes: $("#form-etudes"), racine: $("#form-racine"), fiche: $("#form-fiche"), comparer: $("#form-comparer"), paire: $("#form-paire") };
 
 function show(tab) {
   for (const button of document.querySelectorAll(".tabs button")) {
@@ -222,8 +230,45 @@ forms.paire.addEventListener("submit", async (event) => {
   display(body.html);
 });
 
+// Studies: list, open the report, follow its links to the sheets and comparisons.
+let studyReport = "";
+
+async function loadStudies() {
+  const select = forms.etudes.study;
+  const body = await (await fetch("/api/etudes")).json();
+  select.innerHTML = "";
+  for (const s of body.studies) select.add(new Option(`${s.root} — ${s.name}`, s.path));
+  if (!body.studies.length) notice("لا دراسة بعد : شغل python -m quran_harness etude <جذر>");
+}
+
+async function openStudyFile(path) {
+  const body = await ask("/api/etude", { chemin: path }, $("button.go", forms.etudes));
+  if (!body) return;
+  $("#forms").innerHTML = "";
+  display(body.html);
+  const dir = body.path.split("/").slice(0, -1).join("/");
+  for (const link of document.querySelectorAll("#result a[data-file]")) {
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      openStudyFile(dir + "/" + link.dataset.file);
+    });
+  }
+  $("button.back", forms.etudes).hidden = body.path === studyReport;
+  window.scrollTo(0, 0);
+}
+
+forms.etudes.addEventListener("submit", (event) => {
+  event.preventDefault();
+  studyReport = forms.etudes.study.value + "/00_التقرير.md";
+  openStudyFile(studyReport);
+});
+$("button.back", forms.etudes).addEventListener("click", () => openStudyFile(studyReport));
+
 for (const button of document.querySelectorAll(".tabs button")) {
-  button.addEventListener("click", () => show(button.dataset.tab));
+  button.addEventListener("click", () => {
+    show(button.dataset.tab);
+    if (button.dataset.tab === "etudes") loadStudies();
+  });
 }
 for (const button of document.querySelectorAll("button.print")) {
   button.addEventListener("click", () => window.print());

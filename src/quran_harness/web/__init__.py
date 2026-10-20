@@ -19,6 +19,7 @@ from .. import __version__, comparison, pairs, root_identity, sheet
 from ..config import default_pause, load_config, pause_choices, with_pause
 from ..families import forms_for
 from ..labels import t
+from ..sources import PROJECT_ROOT
 from ..segmentation import selected_scheme
 from ..units import FormSettings, forms_of_root
 from .markdown import to_html
@@ -27,8 +28,9 @@ PAGE = Path(__file__).parent / "index.html"
 PAUSE_LABELS = {"strict": "waqf-strict", "souple": "waqf-souple", "verset": "aya"}
 
 
-def create_app(db_path: Path) -> FastAPI:
+def create_app(db_path: Path, studies_path: Path | None = None) -> FastAPI:
     app = FastAPI(title="Coran++", version=__version__)
+    studies = (studies_path or PROJECT_ROOT / "sorties").resolve()
 
     def connect() -> tuple[sqlite3.Connection, dict[str, str]]:
         if not db_path.is_file():
@@ -119,6 +121,26 @@ def create_app(db_path: Path) -> FastAPI:
             return {"forms": chosen, "notes": notes, "html": to_html(comparison.render(found, meta, detail=detail))}
         finally:
             connection.close()
+
+    @app.get("/api/etudes")
+    def etudes() -> dict:
+        """The studies already run (command `etude`), most recent first."""
+        found = []
+        if studies.is_dir():
+            for report in studies.glob("*/*/00_التقرير.md"):
+                folder = report.parent
+                found.append({"root": folder.parent.name, "name": folder.name,
+                              "path": folder.relative_to(studies).as_posix(), "time": report.stat().st_mtime})  # fmt: skip
+        found.sort(key=lambda s: -s["time"])
+        return {"studies": found}
+
+    @app.get("/api/etude")
+    def etude(chemin: str) -> dict:
+        """One file of a study (report, sheet, comparison), as HTML. Only files inside the studies folder."""
+        target = (studies / chemin).resolve()
+        if studies not in target.parents or target.suffix != ".md" or not target.is_file():
+            raise HTTPException(404, t("no_study"))
+        return {"path": target.relative_to(studies).as_posix(), "html": to_html(target.read_text(encoding="utf-8"))}
 
     @app.get("/api/paire")
     def paire(a: str, b: str, pivot: str) -> dict:

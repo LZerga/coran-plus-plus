@@ -176,6 +176,11 @@ def _bab(vowels: dict[str, Counter]) -> dict[str, str]:
     return seen
 
 
+def _number_only(code: str) -> str:
+    """The number of a noun without its gender (Q38: the gender the corpus gives is left out of the table)."""
+    return " ".join(NUMBERS[ch] for ch in code if ch in NUMBERS)
+
+
 def _pgn(code: str) -> str:
     """3MS → غائب مفرد مذكر ; MP → جمع مذكر ; M → مذكر."""
     person = PERSONS.get(code[0]) if code[0] in PERSONS else None
@@ -235,7 +240,8 @@ def identity(connection: sqlite3.Connection, root: str) -> Identity | None:
                 kind = UNSPECIFIED if tag in ("N", "ADJ") else f"غير الاسم والفعل ({tag})"
             definite = "نكرة" if "INDEF" in features else "معرّف بأل" if has_article else "معرّف بالإضافة" if has_pronoun else ""
             case = next((CASES[f] for f in features if f in CASES), "")
-            box, key = nouns.setdefault((kind, number, pattern), {}), (form, " ، ".join(t for t in (pgn, definite, case) if t))
+            noun_number = next((_number_only(f) for f in features if _is_pgn(f)), "")
+            box, key = nouns.setdefault((kind, number, pattern), {}), (form, " ، ".join(t for t in (noun_number, definite, case) if t))
         box.setdefault(key, Entry(*key)).refs.append(ref)
 
     def ordered(boxes: dict) -> dict:

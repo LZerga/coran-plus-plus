@@ -16,11 +16,11 @@ def client(built_db):
 
 
 def test_markdown_subset_becomes_escaped_html():
-    text = "# T\n\n- a **b**\n\n| x | y |\n|---|---|\n| 1<br>2 | <i> |\n\nfin `c`"
+    text = "# T\n\n- a **b**\n\n| x | y |\n|---|---|\n| 1<br>2 | <i> |\n\nfin `c` [l](d/e.md)"
     assert to_html(text) == (
         "<h2>T</h2>\n<ul><li>a <strong>b</strong></li></ul>\n"
         '<div class="scroll"><table><tr><th>x</th><th>y</th></tr><tr><td>1<br>2</td><td>&lt;i&gt;</td></tr></table></div>\n'
-        "<p>fin <code>c</code></p>"
+        '<p>fin <code>c</code> <a href="d/e.md" data-file="d/e.md">l</a></p>'
     )
 
 
@@ -73,6 +73,23 @@ def test_comparison_of_two_forms(client):
     assert "مقارنة صيغتين" in body["html"] and "تغاير" in body["html"]
     response = client.get("/api/comparer", params={"a": to_arabic("yqdr"), "b": to_arabic("EAlm")})
     assert response.status_code == 400
+
+
+def test_studies_are_listed_and_opened(built_db, tmp_path, db):
+    from quran_harness import study
+    from quran_harness.config import load_config, with_pause
+
+    study.run(db, to_arabic("bsT"), with_pause(load_config(), "souple"), tmp_path, with_stats=False, say=lambda *_: None)
+    client = TestClient(create_app(built_db, tmp_path))
+    (found,) = client.get("/api/etudes").json()["studies"]
+    report = client.get("/api/etude", params={"chemin": found["path"] + "/00_التقرير.md"}).json()
+    assert "دراسة الجذر" in report["html"] and 'data-file="fiches/' in report["html"]
+    sheet_link = report["html"].split('data-file="')[1].split('"')[0]
+    while not sheet_link.startswith("fiches/"):
+        sheet_link = report["html"].split(f'data-file="{sheet_link}"')[1].split('data-file="')[1].split('"')[0]
+    opened = client.get("/api/etude", params={"chemin": found["path"] + "/" + sheet_link}).json()
+    assert "بطاقة الصيغة" in opened["html"]
+    assert client.get("/api/etude", params={"chemin": "../config.yaml"}).status_code == 404  # never outside the studies
 
 
 def test_pair(client):

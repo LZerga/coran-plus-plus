@@ -1209,3 +1209,15 @@ association (`statistics.min_cooccurrence: 3`). قلب : 36 associations établi
 | ≥ 3 | 14, 3 | 25 |
 Avec un lien ≥ 3, une famille de 3 segments a un gabarit net :
 `{وَ|إِنّا} جَعَلْنَا عَلَى قُلُوبهِم أَكِنَّة أَن يَفْقَهُوه وَ فِى ءَاذَانهِم وَقْرا`.
+
+**Q38 — décision de l'utilisateur (2026-10-20)** : le genre est retiré du tableau des noms
+(niveau 0) pour l'alléger ; le nombre, la définition et le cas restent. Les verbes gardent
+leur إسناد (personne, nombre, genre), qui n'est pas en cause. *Écart avec `DECISIONS.md`* :
+D-21 liste الجنس parmi les traits des noms ; à mettre à jour côté conception.
+
+### Accès aux résultats d'une étude (2026-10-20)
+L'utilisateur n'arrivait pas à ouvrir les fiches (noms de fichiers avec voyelles, dossier
+`sorties/` hors de l'interface). Désormais : noms de fichiers sans voyelles
+(`001_قلوبهم.md`) ; le rapport finit par la liste des fichiers, en liens ; onglet web
+« الدراسات » : choisir une étude, ouvrir son rapport, cliquer vers chaque fiche ou
+comparaison, bouton « رجوع إلى التقرير ».
