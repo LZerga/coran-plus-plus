@@ -274,6 +274,11 @@ for (const button of document.querySelectorAll("button.print")) {
   button.addEventListener("click", () => window.print());
 }
 
+// Opened as a file (not through the server), the page cannot ask anything: say where to open it.
+if (location.protocol === "file:") {
+  notice("هذه الصفحة فتحت كملف، لا عن طريق البرنامج. شغل lancer_interface.bat ثم افتح العنوان http://127.0.0.1:8000", true);
+}
+
 // When studies exist, the page opens on them (tab الدراسات, the first one on the right).
 fetch("/api/etudes").then((r) => r.json()).then((body) => {
   if (body.studies.length) {
