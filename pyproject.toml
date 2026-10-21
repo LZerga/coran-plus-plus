@@ -5,7 +5,9 @@ description = "Harnais d'étude des corrélations coraniques"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115",
+    "matplotlib>=3.11.2",
     "numpy>=2.0",
+    "pandas>=3.0.6",
     "pyyaml>=6.0",
     "uvicorn>=0.30",
 ]
