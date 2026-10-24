@@ -165,6 +165,8 @@ def forms_pairs_page(study: Path, min_occurrences: int = 3) -> Path:
                  "<details><summary>تنبيه منهجي</summary>المقاطع الطويلة تتقاطع أكثر بطبيعتها (فيها كلمات أكثر). هذه النسب لم تقارن بعد "
                  "بما يعطيه خلط المقاطع بين الصيغ بالصدفة ؛ هي ملاحظات (الحالة : ملاحظ).</details></section>")  # fmt: skip
 
+    parts += structure_sections(kept, matrix, occurrences)
+
     # Table view
     rows = "".join(f"<tr><td>{html.escape(r.form_a)}</td><td>{html.escape(r.form_b)}</td><td>{r.pairs}</td><td>{r.case_a}</td>"
                    f"<td>{r.case_b}</td><td>{r.case_c}</td><td>{r.crossing:.0%}</td></tr>"
@@ -173,4 +175,236 @@ def forms_pairs_page(study: Path, min_occurrences: int = 3) -> Path:
                  f"<th>أ</th><th>ب</th><th>ج</th><th>تقاطع</th></tr>{rows}</table></details></section></main></body></html>")  # fmt: skip
     out = study / "visuel_paires_formes.html"
     out.write_text("".join(parts), encoding="utf-8")
+    return out
+
+
+# --- Structure of the forms × forms table: non-statistical readings ----------------------------
+# Topology (groups across every threshold), graph theory (skeleton, bridges), geometry (a map).
+
+CATEGORICAL = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#6250d6", "#e34948"]
+
+
+def _edges(similarity: np.ndarray) -> list[tuple[float, int, int]]:
+    n = len(similarity)
+    found = [(float(similarity[i, j]), i, j) for i in range(n) for j in range(i + 1, n) if similarity[i, j] == similarity[i, j]]
+    return sorted(found, reverse=True)
+
+
+def single_linkage(similarity: np.ndarray) -> list[tuple[int, int, float, int]]:
+    """Merges (cluster a, cluster b, level, new cluster), strongest link first.
+
+    Single linkage is the 0-dimensional persistent homology of the threshold graph: at level s,
+    two forms are in one group when a chain of crossings >= s joins them.
+    """
+    n = len(similarity)
+    parent = list(range(n))
+    cluster_of = list(range(n))
+    merges, next_id = [], n
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for s, i, j in _edges(similarity):
+        a, b = find(i), find(j)
+        if a != b:
+            merges.append((cluster_of[a], cluster_of[b], s, next_id))
+            parent[b] = a
+            cluster_of[a] = next_id
+            next_id += 1
+    return merges
+
+
+def maximum_spanning_tree(similarity: np.ndarray) -> list[tuple[int, int, float]]:
+    parent = list(range(len(similarity)))
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    tree = []
+    for s, i, j in _edges(similarity):
+        a, b = find(i), find(j)
+        if a != b:
+            parent[b] = a
+            tree.append((i, j, s))
+    return tree
+
+
+def articulation_points(adjacency: list[set[int]]) -> set[int]:
+    """Vertices whose removal disconnects the graph (Tarjan)."""
+    n, counter = len(adjacency), [0]
+    order, low, found = [-1] * n, [0] * n, set()
+
+    def visit(u, parent):
+        order[u] = low[u] = counter[0]
+        counter[0] += 1
+        children = 0
+        for v in adjacency[u]:
+            if order[v] == -1:
+                children += 1
+                visit(v, u)
+                low[u] = min(low[u], low[v])
+                if parent != -1 and low[v] >= order[u]:
+                    found.add(u)
+            elif v != parent:
+                low[u] = min(low[u], order[v])
+        if parent == -1 and children > 1:
+            found.add(u)
+
+    for u in range(n):
+        if order[u] == -1:
+            visit(u, -1)
+    return found
+
+
+def classical_mds(distance: np.ndarray) -> tuple[np.ndarray, list[float]]:
+    """Coordinates in 2 dimensions, and the share of structure each axis carries (positive eigenvalues)."""
+    n = len(distance)
+    j = np.eye(n) - np.ones((n, n)) / n
+    b = -0.5 * j @ (distance**2) @ j
+    values, vectors = np.linalg.eigh(b)
+    order = np.argsort(values)[::-1]
+    values, vectors = values[order], vectors[:, order]
+    positive = values[values > 1e-12]
+    shares = (positive / positive.sum()).tolist() if len(positive) else []
+    coords = vectors[:, :2] * np.sqrt(np.maximum(values[:2], 0))
+    return coords, shares
+
+
+def structure_sections(forms: list[str], similarity: np.ndarray, occurrences: dict) -> list[str]:
+    n = len(forms)
+    if n < 3:
+        return []
+    sim = similarity.copy()
+    np.fill_diagonal(sim, np.nan)
+    merges = single_linkage(sim)
+    if not merges:
+        return []
+    members = {k: [k] for k in range(n)}
+    level = {k: 1.0 for k in range(n)}
+    absorbed: dict[int, float] = {}
+    for a, b, s, new in merges:
+        members[new] = members[a] + members[b]
+        level[new] = s
+        absorbed[a] = absorbed[b] = s
+    root = merges[-1][3]
+
+    # Groups: cut at the largest gap between consecutive merge levels (the most persistent split).
+    levels = [m[2] for m in merges]
+    gaps = [(levels[k] - levels[k + 1], k) for k in range(len(levels) - 1)]
+    cut = levels[max(gaps)[1]] if gaps else 0.0
+    group_of = {}
+    for k in range(n):
+        node = k
+        for a, b, s, new in merges:
+            if node in (a, b) and s >= cut:
+                node = new
+        group_of[k] = node
+    groups = list(dict.fromkeys(group_of[k] for k in range(n)))
+    colour = {g: CATEGORICAL[i % len(CATEGORICAL)] for i, g in enumerate(sorted(groups, key=lambda g: -len(members[g])))}
+
+    # Persistent groups: formed at level h, absorbed at level h'; persistence h - h'.
+    persistent = sorted(
+        ((level[node] - absorbed.get(node, 0.0), node) for node in members if len(members[node]) >= 2 and node != root),
+        reverse=True,
+    )[:4]
+
+    # 4. Dendrogram
+    leaf_order: list[int] = []
+    children = {new: (a, b) for a, b, s, new in merges}
+
+    def walk(node):
+        if node < n:
+            leaf_order.append(node)
+        else:
+            walk(children[node][0])
+            walk(children[node][1])
+
+    walk(root)
+    row, width, label = 30, 560, 130
+    y_of = {leaf: 14 + k * row for k, leaf in enumerate(leaf_order)}
+    lo = min(levels)
+
+    def x(s):  # 1.0 (the leaves) on the right, the weakest merge on the left
+        return 20 + (s - lo) / max(1e-9, 1.0 - lo) * (width - 40)
+
+    svg = [f"<svg width='{width + label}' height='{row * n + 40}' role='img' aria-label='dendrogram'>"]
+    for t in np.linspace(lo, 1.0, 5):
+        svg.append(f"<line class='grid' x1='{x(t):.1f}' x2='{x(t):.1f}' y1='6' y2='{row * n + 6}'/>")
+        svg.append(f"<text class='muted' x='{x(t):.1f}' y='{row * n + 24}' text-anchor='middle'>{t:.0%}</text>")
+    pos = {leaf: (x(1.0), y_of[leaf]) for leaf in range(n)}
+    for a, b, s, new in merges:
+        (xa, ya), (xb, yb) = pos[a], pos[b]
+        xn = x(s)
+        stroke = colour[group_of[members[new][0]]] if s >= cut else "var(--muted)"
+        names = html.escape("، ".join(forms[k] for k in members[new]))
+        svg.append(f"<path d='M{xa:.1f},{ya:.1f} H{xn:.1f} V{yb:.1f} H{xb:.1f}' fill='none' stroke='{stroke}' "
+                   f"stroke-width='2'><title>{names} : {s:.0%}</title></path>")  # fmt: skip
+        pos[new] = (xn, (ya + yb) / 2)
+    for leaf in range(n):
+        svg.append(f"<text x='{x(1.0) + 8:.1f}' y='{y_of[leaf] + 5}' font-size='14' text-anchor='start' "
+                   f"style='fill:{colour[group_of[leaf]]}'>{html.escape(forms[leaf])}</text>")  # fmt: skip
+    svg.append(f"<line class='axis' x1='{x(cut):.1f}' x2='{x(cut):.1f}' y1='6' y2='{row * n + 6}' stroke-dasharray='4 4'/></svg>")
+    robust = "".join(
+        f"<li>{html.escape('، '.join(sorted(forms[k] for k in members[node])))} : تتكون عند {level[node]:.0%} "
+        f"وتبقى منفصلة حتى {absorbed.get(node, 0):.0%} (المدى {p:.0%})</li>"
+        for p, node in persistent
+    )
+    out = [
+        "<section><h2>4. المجموعات عبر كل العتبات (طوبولوجيا : الاستمرار)</h2>"
+        "<p class='sub'>بدل اختيار عتبة واحدة : كلما نزلت عتبة التقاطع (من اليمين إلى اليسار) اندمجت الصيغ في مجموعات. "
+        "المجموعة التي تبقى منفصلة على مدى واسع متينة لا تتعلق باختيار العتبة. الخط المنقط : أوسع فجوة، وعندها تلون المجموعات.</p>"
+        f"<div class='scroll' dir='ltr'>{''.join(svg)}</div>"
+        f"<p class='read'>أمتن المجموعات :</p><ul class='read'>{robust}</ul></section>"
+    ]
+
+    # 5. Map (classical MDS) with the skeleton (maximum spanning tree) and the bridges
+    distance = 1.0 - np.nan_to_num(similarity, nan=0.0)
+    np.fill_diagonal(distance, 0.0)
+    coords, shares = classical_mds(distance)
+    tree = maximum_spanning_tree(sim)
+    bottleneck = min(s for *_, s in tree)
+    adjacency = [{j for j in range(n) if j != i and sim[i, j] == sim[i, j] and sim[i, j] >= bottleneck} for i in range(n)]
+    bridges = articulation_points(adjacency)
+    w, h, pad = 680, 520, 60
+    span = np.ptp(coords, axis=0)
+    span[span == 0] = 1
+    low = coords.min(axis=0)
+
+    def px(i):
+        return pad + (coords[i, 0] - low[0]) / span[0] * (w - 2 * pad)
+
+    def py(i):
+        return pad + (coords[i, 1] - low[1]) / span[1] * (h - 2 * pad)
+
+    svg = [f"<svg width='{w}' height='{h}' role='img' aria-label='map'>"]
+    for i, j, s in tree:
+        svg.append(f"<line x1='{px(i):.1f}' y1='{py(i):.1f}' x2='{px(j):.1f}' y2='{py(j):.1f}' stroke='var(--axis)' "
+                   f"stroke-width='{1 + 5 * s:.1f}'><title>{html.escape(forms[i])} — {html.escape(forms[j])} : {s:.0%}</title></line>")  # fmt: skip
+    for i in range(n):
+        r = 5 + 2.2 * np.sqrt(occurrences.get(forms[i], 1))
+        ring = " stroke='var(--ink)' stroke-width='3'" if i in bridges else " stroke='var(--surface)' stroke-width='2'"
+        svg.append(f"<circle cx='{px(i):.1f}' cy='{py(i):.1f}' r='{r:.1f}' fill='{colour[group_of[i]]}'{ring}>"
+                   f"<title>{html.escape(forms[i])} ({occurrences.get(forms[i], '?')} ورود)</title></circle>")  # fmt: skip
+        svg.append(f"<text x='{px(i):.1f}' y='{py(i) - r - 6:.1f}' text-anchor='middle' font-size='14'>"
+                   f"{html.escape(forms[i])}{' ◆' if i in bridges else ''}</text>")  # fmt: skip
+    svg.append("</svg>")
+    axes = "، ".join(f"المحور {k + 1} : {v:.0%}" for k, v in enumerate(shares[:4]))
+    bridge_text = "، ".join(forms[i] for i in sorted(bridges)) or "لا شيء"
+    out.append(
+        "<section><h2>5. خريطة الصيغ وهيكل الروابط (هندسة ونظرية البيان)</h2>"
+        "<p class='sub'>الصيغ المتقاربة في الجدول متقاربة على الخريطة (إسقاط في بعدين). الخطوط : الهيكل، أي أقوى الروابط التي تصل كل الصيغ "
+        "دون حلقة (كلما غلظ الخط قوي التقاطع). حجم الدائرة : عدد الورود. اللون : المجموعات المستخرجة أعلاه.</p>"
+        f"<div class='scroll' dir='ltr'>{''.join(svg)}</div>"
+        f"<p class='read'>الجسور (◆) : صيغ إذا حذفت انفصلت الصيغ الأخرى إلى مجموعات لا يصل بينها رابط عند عتبة {bottleneck:.0%} : "
+        f"<strong>{html.escape(bridge_text)}</strong>.</p>"
+        f"<p class='read'>أبعاد البنية (نصيب كل محور) : {axes}. محور أول كبير يعني أن تقسيما واحدا يغلب على الجذر.</p>"
+        "<details><summary>تنبيه</summary>قراءات بنيوية للجدول نفسه، لا اختبارات إحصائية : تصف شكل الروابط، ولا تقول إنها أكثر من "
+        "الصدفة.</details></section>"
+    )
     return out
