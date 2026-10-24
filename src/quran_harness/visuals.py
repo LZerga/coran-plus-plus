@@ -63,7 +63,7 @@ def _order(matrix: np.ndarray) -> list[int]:
     return list(np.argsort(fiedler))
 
 
-def forms_pairs_page(study: Path, min_occurrences: int = 3) -> Path:
+def forms_pairs_page(study: Path, min_occurrences: int = 3, min_comparisons: int = 30) -> Path:
     """Charts of `paires_formes.csv` for forms with at least `min_occurrences` occurrences."""
     pairs = pd.read_csv(study / "paires_formes.csv", encoding="utf-8-sig")
     profiles = pd.read_csv(study / "profils.csv", encoding="utf-8-sig")
@@ -71,6 +71,7 @@ def forms_pairs_page(study: Path, min_occurrences: int = 3) -> Path:
     kept = [f for f in profiles["form"] if occurrences[f] >= min_occurrences]
     pairs = pairs[pairs["form_a"].isin(kept) & pairs["form_b"].isin(kept)].copy()
     pairs["crossing"] = (pairs["pairs"] - pairs["case_c"]) / pairs["pairs"]
+    pairs["reliable"] = pairs["pairs"] >= min_comparisons
     pairs["share_a"] = pairs["case_a"] / pairs["pairs"]
     pairs["share_b"] = pairs["case_b"] / pairs["pairs"]
 
@@ -109,14 +110,18 @@ def forms_pairs_page(study: Path, min_occurrences: int = 3) -> Path:
                 continue
             tip = (f"{fi} × {fj}\nمقارنات المقاطع : {r.pairs}\nتتقاطع (أ أو ب) : {r.pairs - r.case_c} ({r.crossing:.0%})"
                    f"\nأ نفس الصيغة : {r.case_a} ؛ ب نفس الجذر : {r.case_b} ؛ ج : {r.case_c}")  # fmt: skip
+            sparse = "" if r.reliable else " fill-opacity='0.35' stroke='var(--muted)' stroke-dasharray='3 2'"
+            if not r.reliable:
+                tip += f"\nقليلة المقارنات (أقل من {min_comparisons}) : نسبة غير مستقرة"
             svg.append(f"<rect class='cell' x='{x + 1}' y='{y + 1}' width='{cell - 2}' height='{cell - 2}' rx='3' "
-                       f"fill='{_ramp(r.crossing)}'><title>{html.escape(tip)}</title></rect>")  # fmt: skip
+                       f"fill='{_ramp(r.crossing)}'{sparse}><title>{html.escape(tip)}</title></rect>")  # fmt: skip
     svg.append("</svg>")
     ramp = "".join(f"<span style='background:{c}'></span>" for c in BLUE)
     parts.append("<section><h2>1. خريطة التقاطع : أي الصيغ تتقاسم السياقات ؟</h2>"
                  "<p class='sub'>كل خانة : نسبة مقارنات المقاطع التي تتقاطع (أ أو ب) بين الصيغتين. الترتيب يقرب الصيغ المتشابهة في تقاطعاتها.</p>"
                  f"<div class='scroll' dir='ltr'>{''.join(svg)}</div>"
                  f"<div class='legend'>0%<div class='ramp'>{ramp}</div>100%</div>"
+                 "<p class='read'>الخانات الباهتة ذات الإطار المنقط : أزواج قليلة المقارنات، نسبتها غير مستقرة.</p>"
                  "<p class='read'>القراءة : الكتل الداكنة على القطر مجموعات صيغ تتقاسم كلماتها المحيطة ؛ الصفوف الفاتحة صيغ معزولة عن غيرها. "
                  "مرر الفأرة على خانة لرؤية الأعداد.</p></section>")  # fmt: skip
 
@@ -146,7 +151,10 @@ def forms_pairs_page(study: Path, min_occurrences: int = 3) -> Path:
                  "<p class='read'>القراءة : الأزواج البعيدة فوق الخط تشبه حالة « عالم الغيب / علام الغيوب » ؛ القريبة من الأصل لا تتقاطع إلا قليلا.</p></section>")  # fmt: skip
 
     # 3. Connectedness of each form
-    mean = np.nanmean(matrix, axis=1)
+    weights = np.full_like(matrix, np.nan)
+    for row in pairs.itertuples():
+        weights[index[row.form_a], index[row.form_b]] = weights[index[row.form_b], index[row.form_a]] = row.pairs
+    mean = np.nansum(np.nan_to_num(matrix) * np.nan_to_num(weights), axis=1) / np.maximum(np.nansum(weights, axis=1), 1)
     ranking = sorted(zip(kept, mean), key=lambda x: -x[1])
     bh, bw, lab = 26, 520, 130
     svg = [f"<svg width='{lab + bw + 70}' height='{bh * len(ranking) + 20}' role='img' aria-label='bars'>"]
@@ -159,13 +167,19 @@ def forms_pairs_page(study: Path, min_occurrences: int = 3) -> Path:
         svg.append(f"<text class='muted' x='{lab + bw - length - 6:.1f}' y='{y + 17}' text-anchor='end'>{value:.0%}</text>")
     svg.append("</svg>")
     parts.append("<section><h2>3. ارتباط كل صيغة بأخواتها</h2>"
-                 "<p class='sub'>متوسط نسبة التقاطع بين الصيغة وكل الصيغ الأخرى.</p>"
+                 "<p class='sub'>متوسط نسبة التقاطع بين الصيغة وكل الصيغ الأخرى، موزونا بعدد المقارنات (الأزواج الكثيرة المقارنات تزن أكثر).</p>"
                  f"<div class='scroll' dir='ltr'>{''.join(svg)}</div>"
                  "<p class='read'>القراءة : أعلى القائمة صيغ تشارك أخواتها سياقاتها ؛ أسفلها صيغ لها سياقات خاصة بها.</p>"
                  "<details><summary>تنبيه منهجي</summary>المقاطع الطويلة تتقاطع أكثر بطبيعتها (فيها كلمات أكثر). هذه النسب لم تقارن بعد "
                  "بما يعطيه خلط المقاطع بين الصيغ بالصدفة ؛ هي ملاحظات (الحالة : ملاحظ).</details></section>")  # fmt: skip
 
-    parts += structure_sections(kept, matrix, occurrences)
+    # Structure readings only on pairs with enough comparisons (a percentage over 15 comparisons is unstable).
+    reliable = np.full_like(matrix, np.nan)
+    for row in pairs[pairs["reliable"]].itertuples():
+        reliable[index[row.form_a], index[row.form_b]] = reliable[index[row.form_b], index[row.form_a]] = row.crossing
+    parts.append(f"<p class='sub'>الأقسام 4 و5 : لا تدخل إلا أزواج الصيغ التي لها {min_comparisons} مقارنة فأكثر "
+                 f"({int(pairs['reliable'].sum())} زوجا من {len(pairs)}) ؛ النسب المبنية على مقارنات قليلة غير مستقرة.</p>")
+    parts += structure_sections(kept, reliable, occurrences)
 
     # Table view
     rows = "".join(f"<tr><td>{html.escape(r.form_a)}</td><td>{html.escape(r.form_b)}</td><td>{r.pairs}</td><td>{r.case_a}</td>"
@@ -285,6 +299,17 @@ def structure_sections(forms: list[str], similarity: np.ndarray, occurrences: di
     merges = single_linkage(sim)
     if not merges:
         return []
+    # Pairs left out (too few comparisons) may leave several components: they are joined at the bottom,
+    # below every real link, so that the tree stays whole (drawn grey: no link observed there).
+    merged = {a for a, _, _, _ in merges} | {b for _, b, _, _ in merges}
+    tops = [k for k in range(n) if k not in merged] + [m[3] for m in merges if m[3] not in merged]
+    floor = max(0.0, min(m[2] for m in merges) - 0.05)
+    next_id = (merges[-1][3] + 1) if merges else n
+    while len(tops) > 1:
+        a, b = tops.pop(0), tops.pop(0)
+        merges.append((a, b, floor, next_id))
+        tops.append(next_id)
+        next_id += 1
     members = {k: [k] for k in range(n)}
     level = {k: 1.0 for k in range(n)}
     absorbed: dict[int, float] = {}
@@ -364,10 +389,14 @@ def structure_sections(forms: list[str], similarity: np.ndarray, occurrences: di
     ]
 
     # 5. Map (classical MDS) with the skeleton (maximum spanning tree) and the bridges
-    distance = 1.0 - np.nan_to_num(similarity, nan=0.0)
+    known = similarity[~np.isnan(similarity)]
+    filler = float(np.median(known)) if len(known) else 0.0
+    distance = 1.0 - np.where(np.isnan(similarity), filler, similarity)  # a missing pair sits at the median distance
     np.fill_diagonal(distance, 0.0)
     coords, shares = classical_mds(distance)
     tree = maximum_spanning_tree(sim)
+    if not tree:
+        return out
     bottleneck = min(s for *_, s in tree)
     adjacency = [{j for j in range(n) if j != i and sim[i, j] == sim[i, j] and sim[i, j] >= bottleneck} for i in range(n)]
     bridges = articulation_points(adjacency)

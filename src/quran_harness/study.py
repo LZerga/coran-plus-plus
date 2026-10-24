@@ -191,7 +191,7 @@ def run(connection: sqlite3.Connection, root: str, config: dict, out_root: Path,
     (folder / "01_القوالب.md").write_text(frames.render(root_frames, meta, detail=True), encoding="utf-8")
     from . import visuals
 
-    visuals.forms_pairs_page(folder)  # rule of the author: every study comes with its charts
+    visuals.forms_pairs_page(folder, min_comparisons=config['visuals']['min_comparisons'])  # every study comes with its charts
     (folder / "00_التقرير.md").write_text(report, encoding="utf-8")
     timings["fin"] = time.time()
     _journal(folder, found.root, config, meta, connection, timings, started, with_stats, len(forms), total_pairs)

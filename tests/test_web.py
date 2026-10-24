@@ -34,7 +34,7 @@ def test_meta_gives_the_pause_choices_in_arabic(client):
     meta = client.get("/api/meta").json()
     assert meta["version"] == __version__
     assert [p["label"] for p in meta["pauses"]] == ["تقطيع صارم", "تقطيع مرن", "تقطيع بالآيات"]
-    assert meta["default_pause"] == "strict"
+    assert meta["default_pause"] == "souple"
 
 
 def test_home_page_of_a_root_is_its_identity_and_its_forms(client, db):

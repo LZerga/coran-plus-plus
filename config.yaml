@@ -5,7 +5,9 @@ reading: hafs
 
 segmentation:
   scheme: waqf          # waqf | aya            (Q1)
-  pause_level: strict   # strict | souple       (Q1)
+  # Découpage par défaut : souple, plus proche des segments du document (décision de l'utilisateur, 2026-10-24 ;
+  # D-01 reste ouverte côté conception).   (Q1)
+  pause_level: souple   # strict | souple
   # Marques de pause qui ferment un segment, pour chaque niveau. La fin de verset
   # ferme toujours un segment. Noms : lazim (م), qala (قلى), jaiz (ج), sala (صلى).
   pause_levels:
@@ -50,6 +52,12 @@ comparison:             # niveau 5 : comparaison de deux formes de la même raci
 study:                  # commande etude : analyse complète d'une racine
   pair_min_occurrences: 1     # formes comparées deux à deux à partir de ce nombre d'occurrences (D-18 : toutes)
   detail_min_occurrences: 3   # une comparaison a son propre fichier si chaque forme a au moins ce nombre
+
+visuals:                # analyses visuelles
+  # Une paire de formes n'entre dans les analyses de structure (groupes, carte, ponts) qu'à partir de
+  # ce nombre de comparaisons de segments : en dessous, son pourcentage est trop instable.
+  # Décision de l'utilisateur (2026-10-24).
+  min_comparisons: 30
 
 statistics:             # (Q10) ; contrôle aléatoire, refait sur les cases au lot E
   seed: 20261010

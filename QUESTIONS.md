@@ -1256,3 +1256,18 @@ Ordre fixe et transparent : jusqu'à 3 cadres établis après et 3 avant (au moi
 occurrences, les plus éloignés du hasard d'abord), 2 cases, 2 formules (forme d'au moins 3
 occurrences dont la moitié des segments répète un bloc), 2 covariations établies,
 2 associations établies, 1 concept ; au plus 10 phrases. À revoir avec l'auteur.
+
+---
+
+## Décisions du 2026-10-24
+- **Découpage par défaut : souple** (`segmentation.pause_level: souple`), plus proche des segments
+  du document. *D-01 reste ouverte côté conception* ; le réglage strict reste disponible.
+- **Analyses de structure** (groupes à travers les seuils, carte, squelette, ponts) : seulement
+  sur les paires de formes d'au moins 30 comparaisons de segments (`visuals.min_comparisons`) ;
+  la carte de chaleur garde toutes les paires mais pâlit les paires peu fournies ; la liaison de
+  chaque forme est une moyenne pondérée par le nombre de comparaisons.
+  قلب : 41 paires sur 55 retenues ; le groupe le plus stable réunit toutes les formes sauf
+  ٱنقَلَبُوا (de 29 % à 15 %) ; pont : قُلُوبهِم.
+- Fiche web : grille de toutes les comparaisons de segments d'une forme, colorée par type ;
+  un clic dessine la comparaison (traits entre éléments partagés) et la résume.
+- En attente : réunir قُلُوبهِم / قُلُوبهُم (voyelle du pronom, conséquence de D-04).
