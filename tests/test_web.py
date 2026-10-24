@@ -52,8 +52,10 @@ def test_sheet_of_a_form_typed_without_vowels(client, db):
     config = load_config()
     config["segmentation"]["pause_level"] = "souple"
     meta = dict(db.execute("SELECT key, value FROM meta"))
-    expected = sheet.render(sheet.build(db, to_arabic("yaqodir"), "waqf-souple", config), meta, config)
-    assert body["html"] == to_html(expected)
+    from quran_harness.web import _with_grid
+
+    found = sheet.build(db, to_arabic("yaqodir"), "waqf-souple", config)
+    assert body["html"] == _with_grid(to_html(sheet.render(found, meta, config)), found)  # the command's sheet, plus the grid
 
 
 def test_a_form_opened_with_its_vowels_is_that_form_only(client):
@@ -65,7 +67,7 @@ def test_a_form_opened_with_its_vowels_is_that_form_only(client):
 def test_detail_shows_the_pairs(client):
     light = client.get("/api/fiche", params={"q": to_arabic("yqdr"), "pause": "souple"}).json()["html"]
     full = client.get("/api/fiche", params={"q": to_arabic("yqdr"), "pause": "souple", "detail": True}).json()["html"]
-    assert "13:26:1-6 / 16:75:1-19" in full and "13:26:1-6 / 16:75:1-19" not in light
+    assert "<strong>13:26:1-6 / 16:75:1-19</strong>" in full and "<strong>13:26:1-6 / 16:75:1-19</strong>" not in light
 
 
 def test_comparison_of_two_forms(client):
@@ -90,6 +92,12 @@ def test_studies_are_listed_and_opened(built_db, tmp_path, db):
     opened = client.get("/api/etude", params={"chemin": found["path"] + "/" + sheet_link}).json()
     assert "بطاقة الصيغة" in opened["html"]
     assert client.get("/api/etude", params={"chemin": "../config.yaml"}).status_code == 404  # never outside the studies
+
+
+def test_sheet_shows_the_grid_of_all_its_pairs(client):
+    body = client.get("/api/fiche", params={"q": to_arabic("yqdr"), "pause": "souple"}).json()
+    assert body["html"].count("class='pair-cell'") == 2 * 66  # each pair drawn on both sides of the diagonal
+    assert body["html"].index("شبكة المقارنات الثنائية") < body["html"].index("<h3>ج.")
 
 
 def test_pair(client):

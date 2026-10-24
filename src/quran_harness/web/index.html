@@ -194,6 +194,23 @@ async function openSheet(form) {
   forms.fiche.requestSubmit();
 }
 
+// Grid of the pairs of a form: a click draws the pair below the grid.
+function attachPairCells() {
+  const view = $("#pair-view");
+  if (!view) return;
+  for (const cell of document.querySelectorAll("#result .pair-cell")) {
+    cell.addEventListener("click", async () => {
+      view.innerHTML = "<p class='legend'>…</p>";
+      const params = new URLSearchParams({ a: cell.dataset.a, b: cell.dataset.b, pivot: view.dataset.pivot });
+      const response = await fetch("/api/paire?" + params);
+      const body = await response.json();
+      view.innerHTML = response.ok ? `<h3>${cell.dataset.a} / ${cell.dataset.b}</h3>` + body.html
+                                   : `<p class='message error'>${body.detail}</p>`;
+      view.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+}
+
 forms.racine.addEventListener("submit", async (event) => {
   event.preventDefault();
   const body = await ask("/api/racine", { q: forms.racine.q.value }, $("button.go", forms.racine));
@@ -209,6 +226,7 @@ forms.fiche.addEventListener("submit", async (event) => {
                          $("button.go", f));
   if (!body) return;
   display(body.html);
+  attachPairCells();
   const others = body.candidates.filter((c) => c.form !== body.form);
   formButtons(others, others.length ? "الكتابة تشمل صيغا أخرى أيضا :" : "");
 });

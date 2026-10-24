@@ -28,6 +28,15 @@ PAGE = Path(__file__).parent / "index.html"
 PAUSE_LABELS = {"strict": "waqf-strict", "souple": "waqf-souple", "verset": "aya"}
 
 
+def _with_grid(page: str, found) -> str:
+    """The grid of all the pairs of the form, set before the analysis part of the sheet."""
+    from .. import visuals
+
+    grid = visuals.relation_grid(found.analysis, found.form)
+    marker = "<h3>ج."
+    return page.replace(marker, grid + marker, 1) if grid and marker in page else page + grid
+
+
 def create_app(db_path: Path, studies_path: Path | None = None) -> FastAPI:
     app = FastAPI(title="Coran++", version=__version__)
     studies = (studies_path or PROJECT_ROOT / "sorties").resolve()
@@ -93,7 +102,7 @@ def create_app(db_path: Path, studies_path: Path | None = None) -> FastAPI:
             return {
                 "form": form,
                 "candidates": [{"form": f, "occurrences": n} for f, n in candidates.items()],
-                "html": to_html(sheet.render(found, meta, config, detail=detail)),
+                "html": _with_grid(to_html(sheet.render(found, meta, config, detail=detail)), found),
             }
         finally:
             connection.close()

@@ -505,3 +505,69 @@ def pair_summary(a, pa: int, b, pb: int, signature) -> list[str]:
 
 LEGEND = ("<div class='legend'><span style='color:#2a78d6'>━</span> نفس الصيغة <span style='color:#1baf7a'>━</span> نفس الأصل "
           "<span style='color:#eb6834'>╍</span> نفس الجذر <span>━</span> الصيغة المرجعية ؛ الخانات الباهتة : بلا مقابل</div>")  # fmt: skip
+
+
+# --- All the pairs of a form, as one grid ---------------------------------------------------------
+
+GRID_TYPES = [  # (key, label, colour) in a fixed order
+    ("R1", "تطابق (R1)", "#2a78d6"),
+    ("R1+R2", "تطابق جزئي + تشابه", "#6250d6"),
+    ("R2", "تشابه (R2)", "#eb6834"),
+    ("R3", "اختلاف (R3)", "var(--grid)"),
+]
+
+
+def _grid_key(types: tuple[str, ...]) -> str:
+    if "R2" in types and any(t.startswith("R1") for t in types):
+        return "R1+R2"
+    if any(t.startswith("R1") for t in types):
+        return "R1"
+    return "R2" if "R2" in types else "R3"
+
+
+def relation_grid(analysis, form: str) -> str:
+    """Segments × segments of a form, each cell coloured by the type of its pair; rows ordered by family.
+
+    Each cell carries the two segments (data-a, data-b) so that the page can draw the pair on click.
+    """
+    rows = analysis.rows
+    n = len(rows)
+    if n < 2:
+        return ""
+    order = [r for family in analysis.families for r in family.rows]
+    position = {r: k for k, r in enumerate(order)}
+    cell = max(10, min(26, 640 // n))
+    label = 92
+    size = label + cell * n
+    counts = {key: 0 for key, _, _ in GRID_TYPES}
+    colour = {key: c for key, _, c in GRID_TYPES}
+    svg = [f"<svg width='{size + 8}' height='{size + 8}' role='img' aria-label='pairs grid' style='direction:ltr'>"]
+    for r in order:
+        k = position[r]
+        ref = ":".join(rows[r].segment_ref.split(":")[:2])
+        svg.append(f"<text x='{label - 6}' y='{label + k * cell + cell * 0.7:.1f}' text-anchor='end' font-size='{min(13, cell)}' "
+                   f"class='muted'>{k + 1}. {ref}</text>")  # fmt: skip
+        x = label + k * cell + cell / 2
+        svg.append(f"<text x='{x:.1f}' y='{label - 6}' text-anchor='start' font-size='{min(12, cell)}' class='muted' "
+                   f"transform='rotate(-60 {x:.1f} {label - 6})'>{k + 1}</text>")  # fmt: skip
+    for (i, j), signature in analysis.signatures.items():
+        key = _grid_key(signature.types)
+        counts[key] += 1
+        for a, b in ((i, j), (j, i)):
+            x, y = label + position[b] * cell, label + position[a] * cell
+            tip = f"{rows[a].segment_ref} / {rows[b].segment_ref} : {' + '.join(signature.types)}"
+            svg.append(f"<rect class='pair-cell' data-a='{rows[a].segment_ref}' data-b='{rows[b].segment_ref}' x='{x + 1}' "
+                       f"y='{y + 1}' width='{cell - 2}' height='{cell - 2}' rx='2' fill='{colour[key]}' style='cursor:pointer'>"
+                       f"<title>{html.escape(tip)}</title></rect>")  # fmt: skip
+    for r in order:
+        k = position[r]
+        svg.append(f"<rect x='{label + k * cell + 1}' y='{label + k * cell + 1}' width='{cell - 2}' height='{cell - 2}' rx='2' "
+                   f"fill='none' stroke='var(--axis)'/>")  # fmt: skip
+    svg.append("</svg>")
+    legend = " ".join(f"<span style='display:inline-block;width:12px;height:12px;border-radius:2px;background:{c};"
+                      f"border:1px solid var(--axis)'></span> {label_} ({counts[key]})" for key, label_, c in GRID_TYPES)  # fmt: skip
+    return ("<h2>شبكة المقارنات الثنائية</h2>"
+            f"<p class='legend'>كل خانة مقارنة مقطعين من مقاطع «{html.escape(form)}» ({n * (n - 1) // 2} مقارنة). "
+            "الأسطر مرتبة حسب أنواع الاستعمال : الكتل المتجانسة اللون مجموعات مقاطع متشابهة. اضغط على خانة لرسم المقارنة.</p>"
+            f"<div class='scroll' dir='ltr'>{''.join(svg)}</div><p class='legend'>{legend}</p>"
+            f"<div id='pair-view' data-pivot='{html.escape(form)}'></div>")  # fmt: skip
