@@ -64,7 +64,7 @@ def test_muanaqa_pair_cuts_at_one_mark_at_most(choice, expected):
 def test_schemes_come_from_the_configuration():
     config = load_config()
     assert [s.name for s in schemes_from_config(config)] == SCHEMES
-    assert selected_scheme(config) == "waqf-strict"
+    assert selected_scheme(config) == "waqf-souple"
     assert selected_scheme({"segmentation": {"scheme": "aya", "pause_level": "strict"}}) == "aya"
 
 
@@ -199,7 +199,7 @@ def test_command_line_reports(built_db, monkeypatch, capsys):
     monkeypatch.setattr(ingest, "DB_PATH", built_db)
     assert cli.main(["decoupages"]) == 0
     output = capsys.readouterr().out
-    assert "waqf-strict  (retenu par config.yaml)" in output and "10515" in output
+    assert "waqf-souple  (retenu par config.yaml)" in output and "10515" in output
     assert cli.main(["verset", "34:39"]) == 0
     assert "34:39:12-17" in capsys.readouterr().out
     assert cli.main(["exemples"]) == 0
