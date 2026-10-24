@@ -8,11 +8,13 @@
   :root {
     --bg: #f7f5f0; --panel: #ffffff; --ink: #1f2328; --muted: #5b6470; --line: #d9d4c8;
     --accent: #1f5f4a; --accent-ink: #ffffff; --head: #efebe1; --mark: #fff1c2; --warn: #8a4b00;
+    --surface: #ffffff; --grid: #e1e0d9; --axis: #c3c2b7;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #16181b; --panel: #1e2125; --ink: #e6e3dc; --muted: #9aa3ad; --line: #353a41;
       --accent: #6fc3a5; --accent-ink: #10231c; --head: #262a2f; --mark: #4a3d12; --warn: #e0a458;
+      --surface: #1e2125; --grid: #2c2c2a; --axis: #383835;
     }
   }
   * { box-sizing: border-box; }
@@ -57,6 +59,7 @@
   article code { font-size: 19px; background: var(--head); padding: 1px 6px; border-radius: 4px; }
   article strong { background: var(--mark); padding: 0 3px; border-radius: 3px; }
   .scroll { overflow-x: auto; margin: 8px 0; }
+  .legend { color: var(--muted); font-size: 15px; } svg .muted { fill: var(--muted); }
   table { border-collapse: collapse; font-size: 17px; }
   th, td { text-align: right; padding: 5px 9px; border-bottom: 1px solid var(--line); vertical-align: top; white-space: nowrap; }
   th { background: var(--head); font-weight: 700; position: sticky; top: 0; }

@@ -408,3 +408,100 @@ def structure_sections(forms: list[str], similarity: np.ndarray, occurrences: di
         "الصدفة.</details></section>"
     )
     return out
+
+
+# --- One pair of segments, drawn: what they share, and where ------------------------------------
+
+LINK_STYLE = {
+    "E0": ("#2a78d6", ""),  # same form
+    "E1": ("#1baf7a", ""),  # same base, letter or pronoun added
+    "E2": ("#1baf7a", ""),  # same base, pronoun changed
+    "E3": ("#eb6834", "6 4"),  # same root, other form
+}
+
+
+def _width(text: str) -> float:
+    letters = sum(1 for ch in text if "ء" <= ch <= "ي" or ch == "ٱ")
+    return max(44.0, 13.0 * letters + 22.0)
+
+
+def pair_svg(a, pa: int, b, pb: int, signature) -> str:
+    """Two segments, right to left, one above the other; a line joins each pair of cells they share.
+
+    Lines: blue = same form (E0), green = same base (E1, E2), orange dashed = same root (E3); the
+    reference form is joined in black. Cells left without counterpart are pale. Replacements by an
+    unrelated word (E4) are not drawn: they are a position, not a shared element.
+    """
+    gap, height, top_y, bottom_y = 8.0, 34.0, 34.0, 154.0
+    xs_a, xs_b, total_a, total_b = [], [], 0.0, 0.0
+    for cell in a:
+        xs_a.append(total_a)
+        total_a += _width(cell.text) + gap
+    for cell in b:
+        xs_b.append(total_b)
+        total_b += _width(cell.text) + gap
+    width = max(total_a, total_b) + 20
+
+    def box_x(xs, k, cells):  # right to left
+        return width - 10 - xs[k] - _width(cells[k].text)
+
+    linked_a, linked_b, lines = set(), set(), []
+    for link in signature.links:
+        if link.a is None or link.b is None:
+            continue
+        pivot = link.a == pa and link.b == pb
+        if not pivot and link.code not in LINK_STYLE:
+            continue
+        colour, dash = ("var(--ink)", "") if pivot else LINK_STYLE[link.code]
+        x1 = box_x(xs_a, link.a, a) + _width(a[link.a].text) / 2
+        x2 = box_x(xs_b, link.b, b) + _width(b[link.b].text) / 2
+        tip = f"{a[link.a].text} — {b[link.b].text} : {'الصيغة المرجعية' if pivot else link.code}"
+        lines.append(f"<line x1='{x1:.1f}' y1='{top_y + height:.1f}' x2='{x2:.1f}' y2='{bottom_y:.1f}' stroke='{colour}' "
+                     f"stroke-width='{3 if pivot else 2}' stroke-dasharray='{dash}'><title>{html.escape(tip)}</title></line>")  # fmt: skip
+        linked_a.add(link.a)
+        linked_b.add(link.b)
+
+    def boxes(cells, xs, y, linked, pivot):
+        out = []
+        for k, cell in enumerate(cells):
+            x, w = box_x(xs, k, cells), _width(cell.text)
+            style = "fill:var(--grid);stroke:var(--ink);stroke-width:2" if k == pivot else (
+                "fill:var(--surface);stroke:var(--axis)" if k in linked else "fill:transparent;stroke:var(--grid)")
+            colour = "var(--ink)" if k in linked or k == pivot else "var(--muted)"
+            out.append(f"<rect x='{x:.1f}' y='{y:.1f}' width='{w:.1f}' height='{height}' rx='6' style='{style}'/>"
+                       f"<text x='{x + w / 2:.1f}' y='{y + 23:.1f}' text-anchor='middle' font-size='16' style='fill:{colour}'>"
+                       f"{html.escape(cell.text)}</text>")  # fmt: skip
+        return out
+
+    parts = [f"<svg width='{width:.0f}' height='{bottom_y + height + 12:.0f}' role='img' aria-label='pair'>"]
+    parts += [f"<text x='{width - 4:.0f}' y='22' text-anchor='end' font-size='13' class='muted'>أ</text>",
+              f"<text x='{width - 4:.0f}' y='{bottom_y - 8:.0f}' text-anchor='end' font-size='13' class='muted'>ب</text>"]
+    parts += lines + boxes(a, xs_a, top_y, linked_a, pa) + boxes(b, xs_b, bottom_y, linked_b, pb) + ["</svg>"]
+    return "".join(parts)
+
+
+def pair_summary(a, pa: int, b, pb: int, signature) -> list[str]:
+    """The pair in three lines: what is shared, by kind; what each side has alone; the order."""
+    names = {"E0": "نفس الصيغة", "E1": "نفس الأصل (زيادة أو نقصان)", "E2": "نفس الأصل (تغير الضمير)", "E3": "نفس الجذر بصيغة أخرى"}
+    shared: dict[str, list[str]] = {}
+    for link in signature.links:
+        if link.a is not None and link.b is not None and link.code in names and not (link.a == pa and link.b == pb):
+            text = a[link.a].text if link.code == "E0" else f"{a[link.a].text} ~ {b[link.b].text}"
+            shared.setdefault(link.code, []).append(text)
+    alone_a = sum(1 for k in range(len(a)) if k not in {l.a for l in signature.links if l.b is not None and l.code in names} and k != pa)
+    alone_b = sum(1 for k in range(len(b)) if k not in {l.b for l in signature.links if l.a is not None and l.code in names} and k != pb)
+    lines = ["<ul class='read'>"]
+    for code in ("E0", "E1", "E2", "E3"):
+        if code in shared:
+            lines.append(f"<li><strong>{names[code]}</strong> : {html.escape('، '.join(shared[code]))}</li>")
+    if not shared:
+        lines.append("<li>لا شيء مشترك غير الصيغة المرجعية</li>")
+    lines.append(f"<li>خانات بلا مقابل : {alone_a} في أ ، {alone_b} في ب (من {len(a)} و {len(b)})</li>")
+    if signature.inversions:
+        lines.append(f"<li>الترتيب : {signature.inversions} زوج وحدات معكوس</li>")
+    lines.append("</ul>")
+    return lines
+
+
+LEGEND = ("<div class='legend'><span style='color:#2a78d6'>━</span> نفس الصيغة <span style='color:#1baf7a'>━</span> نفس الأصل "
+          "<span style='color:#eb6834'>╍</span> نفس الجذر <span>━</span> الصيغة المرجعية ؛ الخانات الباهتة : بلا مقابل</div>")  # fmt: skip

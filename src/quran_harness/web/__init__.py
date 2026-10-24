@@ -158,7 +158,11 @@ def create_app(db_path: Path, studies_path: Path | None = None) -> FastAPI:
                     raise HTTPException(404, t("not_in_span", form=pivot, text=" ".join(c.text for c in cells)))
                 indexes.append(index)
             signature = pairs.compare(first, indexes[0], second, indexes[1], pairs.PairSettings.from_config(load_config()))
-            return {"html": to_html(pairs.render_pair(first, second, signature, a, b, pivot, meta))}
+            from .. import visuals
+
+            drawing = (f"<h2>الرسم</h2><div class='scroll'>{visuals.pair_svg(first, indexes[0], second, indexes[1], signature)}</div>"
+                       f"{visuals.LEGEND}<h3>الخلاصة</h3>{''.join(visuals.pair_summary(first, indexes[0], second, indexes[1], signature))}")
+            return {"html": drawing + to_html(pairs.render_pair(first, second, signature, a, b, pivot, meta))}
         finally:
             connection.close()
 
