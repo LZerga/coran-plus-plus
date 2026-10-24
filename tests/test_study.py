@@ -23,7 +23,7 @@ def folder(db, tmp_path_factory):
 def test_study_writes_every_part(folder):
     names = {p.name for p in folder.iterdir()}
     assert {"00_التقرير.md", "00_هوية_الجذر.md", "journal.md", "profils.csv", "paires_formes.csv", "resultats.csv",
-            "etat.sqlite", "fiches", "comparaisons"} <= names  # fmt: skip
+            "etat.sqlite", "fiches", "comparaisons", "visuel_paires_formes.html"} <= names  # fmt: skip
     assert len(list((folder / "fiches").iterdir())) >= 5
 
 

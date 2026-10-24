@@ -244,6 +244,7 @@ LABELS = {
     "syn_covariation": "«{a}» مع «{x}»، و«{b}» مع «{y}» في الموضع نفسه (تغاير)",
     "syn_association": "«{form}» مع «{companion}» (عدد المقاطع : {n})",
     "syn_concept": "الصيغ {forms} تشترك في الارتباط بـ : {companions}",
+    "visual_file": "الرسوم البيانية : visuel_paires_formes.html (يفتح في المتصفح)",
     # Messages
     "no_occurrence": "لا ورود لهذه الصيغة.",
     "no_database": "القاعدة غير موجودة : شغل أولا python -m quran_harness build",

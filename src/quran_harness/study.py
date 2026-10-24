@@ -189,6 +189,9 @@ def run(connection: sqlite3.Connection, root: str, config: dict, out_root: Path,
                      root_frames, root_concepts, context)
     report += _file_list(folder, forms, built)
     (folder / "01_القوالب.md").write_text(frames.render(root_frames, meta, detail=True), encoding="utf-8")
+    from . import visuals
+
+    visuals.forms_pairs_page(folder)  # rule of the author: every study comes with its charts
     (folder / "00_التقرير.md").write_text(report, encoding="utf-8")
     timings["fin"] = time.time()
     _journal(folder, found.root, config, meta, connection, timings, started, with_stats, len(forms), total_pairs)
@@ -392,7 +395,8 @@ def _report(found, forms, built, findings, pair_rows, root_families, informative
 def _file_list(folder: Path, forms, built) -> str:
     """Links to the sheets and the comparisons, opened from the report (web tab الدراسات)."""
     lines = ["", f"## {t('files_title')}", "", f"- [{t('identity')}](00_هوية_الجذر.md)",
-             f"- [{t('frames_title')}](01_القوالب.md)", f"- [Journal](journal.md)", "",
+             f"- [{t('frames_title')}](01_القوالب.md)", f"- [Journal](journal.md)",
+             "- " + t("visual_file"), "",
              f"### {t('sheets_title')}", ""]  # fmt: skip
     for number, form in enumerate(forms, start=1):
         name = f"{number:03d}_{_file_name(form)}.md"
