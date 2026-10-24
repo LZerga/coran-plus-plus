@@ -125,6 +125,14 @@ def test_yaqdir_is_in_the_12_ayas_of_d02(db):
     assert [o.word_ref for o in groups[to_arabic("yuqad~ir")]] == ["73:20:17"]
 
 
+def test_the_vowel_of_an_attached_pronoun_in_ha_follows_the_case_and_is_set_aside(db):
+    """Q42: قُلُوبُهُم and قُلُوبِهِم are one form."""
+    assert form_of(to_arabic("quluwbuhumo"), 7, SETTINGS)[0] == form_of(to_arabic("quluwbihimo"), 7, SETTINGS)[0]
+    assert form_of(to_arabic("quluwbuhumo"), 7, FormSettings(**{**vars(SETTINGS), "pronoun_vowel_in_form": True}))[0] !=         form_of(to_arabic("quluwbihimo"), 7, FormSettings(**{**vars(SETTINGS), "pronoun_vowel_in_form": True}))[0]
+    forms = {o.form for o in occurrences_of_form(db, to_arabic("qlwbhm"), SETTINGS)}
+    assert len(forms) == 1 and len(occurrences_of_form(db, to_arabic("qlwbhm"), SETTINGS)) == 68
+
+
 def test_typing_the_vowels_selects_one_form(db):
     found = occurrences_of_form(db, to_arabic("yaqodiru"), SETTINGS)
     assert [o.aya_ref for o in found] == YAQDIR_AYAS

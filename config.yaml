@@ -25,6 +25,9 @@ form:                   # la forme d'une case (DECISIONS.md D-02, D-03, D-04)
   # (لَّا / لَا), alif suscrit final absent devant un alif de liaison (عَلَى / عَلَىٰ).   (Q21)
   assimilation_marks_in_form: false
   final_vowel_in_form: false          # voyelle finale, الإعراب   (D-04, Q27)
+  # Voyelle du pronom collé en ه (هُم / هِم…), qui suit la voyelle de cas : mise à part avec elle.
+  # Décision de l'utilisateur (2026-10-24), gardée comme question à réfléchir.   (Q42)
+  pronoun_vowel_in_form: false
 
 pairs:                  # niveau 1 : comparaison directe de deux segments (SPEC §2.3)
   min_block: 2          # cases E0 consécutives pour un bloc (تطابق جزئي)

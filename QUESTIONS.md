@@ -38,6 +38,7 @@ résultat sous chaque réglage, côte à côte, sans en choisir un.
 | Q25 | Gabarit attendu et découpage (D-01) | colonnes en plus listées | ouverte |
 | Q26 | باب du ثلاثي مجرد et وزن des noms (niveau 0) | lu sur le الشكل, sinon « non déterminé » | ouverte |
 | Q27 | Ce qui compte comme « voyelle finale » (D-04) | signes de la dernière lettre, et voyelle de cas avant un pronom collé | confirmée par l'utilisateur (2026-10-12) |
+| Q42 | Voyelle du pronom collé en ه (هُم / هِم) : dans la forme ou à part ? | à part (réunit قُلُوبهُم / قُلُوبهِم) | appliqué, **à réfléchir** |
 | Q28 | Types de noms que le corpus ne donne pas (niveau 0) | seuls les cas écrits dans le SPEC ; sinon « نوع غير محدد » | ouverte |
 
 **Mise à jour du 2026-10-12 (spécification v12).** Le tableau ci-dessus et le détail
@@ -1271,3 +1272,24 @@ occurrences dont la moitié des segments répète un bloc), 2 covariations étab
 - Fiche web : grille de toutes les comparaisons de segments d'une forme, colorée par type ;
   un clic dessine la comparaison (traits entre éléments partagés) et la résume.
 - En attente : réunir قُلُوبهِم / قُلُوبهُم (voyelle du pronom, conséquence de D-04).
+
+### Q42 — La voyelle du pronom collé en ه : dans la forme ou à part ? (à réfléchir)
+**Appliqué le 2026-10-24 à la demande de l'utilisateur, qui la garde comme question ouverte.**
+
+Constat : la voyelle du pronom en ه suit la voyelle de cas qui le précède (التناسب) :
+`قُلُوبُهُم` (sujet) mais `فِى قُلُوبِهِم` (après une préposition) ; de même `لَهُ` / `بِهِ`,
+`عِبَادُهُ` / `عِبَادِهِ`. La voyelle de cas étant mise à part (D-04, Q27), ce reflet du cas sur
+le pronom coupait un même mot en deux « formes ».
+
+Règle appliquée (`form.pronoun_vowel_in_form: false`) : la voyelle (ُ ou ِ) qui suit le ه d'un
+pronom collé est mise à part, avec la voyelle de cas (colonne `units.stem_vowel`). Les autres
+pronoms ne sont pas touchés : la voyelle de كَ / كِ distingue le masculin du féminin.
+Effet : قُلُوبهم = 68 occurrences (42 + 26) ; 14 320 formes distinctes au lieu de 14 383.
+
+Questions à réfléchir :
+- Ce reflet du cas fait-il partie de « la forme telle qu'écrite » (règle 3 de CLAUDE.md), ou
+  relève-t-il de الإعراب, comme la voyelle finale (D-04) ?
+- Faut-il traiter de même d'autres alternances dues au voisinage (هِي / هُوَ ne sont pas
+  concernés : ce sont des mots, pas des pronoms collés) ?
+- Le réglage permet de revenir à l'état précédent (`pronoun_vowel_in_form: true`).
+

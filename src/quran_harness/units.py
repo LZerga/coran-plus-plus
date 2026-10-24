@@ -76,6 +76,7 @@ class FormSettings:
     detached_waw_tags: frozenset[str]
     assimilation_marks_in_form: bool
     final_vowel_in_form: bool
+    pronoun_vowel_in_form: bool = False
 
     @classmethod
     def from_config(cls, config: dict) -> FormSettings:
@@ -84,6 +85,7 @@ class FormSettings:
             frozenset(form["detached_waw_tags"]),
             form["assimilation_marks_in_form"],
             form["final_vowel_in_form"],
+            form.get("pronoun_vowel_in_form", False),
         )
 
 
@@ -107,6 +109,11 @@ def _form_of(text: str, core_end: int | None, settings: FormSettings) -> tuple[s
     if not tail:
         return head, "", stem_vowel
     tail, final_vowel = split_final_vowel(tail)
+    # The vowel of an attached pronoun in ه (هُم / هِم، هُما / هِما، هُنّ / هِنّ) follows the case vowel
+    # before it (قُلُوبُهُم / قُلُوبِهِم): it is set aside with it (D-04, Q42).
+    if not settings.pronoun_vowel_in_form and len(tail) > 1 and tail[0] == "ه" and tail[1] in "ُِ":
+        stem_vowel += tail[1]
+        tail = tail[0] + tail[2:]
     return head + tail, stem_vowel, final_vowel
 
 
